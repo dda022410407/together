@@ -83,11 +83,164 @@ const patternRules = [
   },
 ];
 
+function gcd(left: number, right: number): number {
+  let a = Math.abs(left);
+  let b = Math.abs(right);
+
+  while (b !== 0) {
+    const next = a % b;
+    a = b;
+    b = next;
+  }
+
+  return a || 1;
+}
+
+function simplifyFraction(numerator: number, denominator: number) {
+  const sign = denominator < 0 ? -1 : 1;
+  const normalizedNumerator = numerator * sign;
+  const normalizedDenominator = denominator * sign;
+  const divisor = gcd(normalizedNumerator, normalizedDenominator);
+
+  return {
+    numerator: normalizedNumerator / divisor,
+    denominator: normalizedDenominator / divisor,
+  };
+}
+
+function formatFraction(numerator: number, denominator: number) {
+  return denominator === 1 ? `${numerator}` : `${numerator}/${denominator}`;
+}
+
+function parseSignedNumber(value: string) {
+  const normalized = value.replace(/\s+/g, "");
+
+  if (normalized === "" || normalized === "+") {
+    return 1;
+  }
+
+  if (normalized === "-") {
+    return -1;
+  }
+
+  return Number(normalized);
+}
+
+function buildFractionDivisionSolution(problemStatement: string) {
+  const match = problemStatement.match(
+    /(-?\d+)\s*\/\s*(-?\d+)\s*(?:÷|\/)\s*(-?\d+)\s*\/\s*(-?\d+)/,
+  );
+
+  if (!match) {
+    return null;
+  }
+
+  const [, firstNumerator, firstDenominator, secondNumerator, secondDenominator] =
+    match.map(Number);
+
+  if (
+    firstDenominator === 0 ||
+    secondNumerator === 0 ||
+    secondDenominator === 0
+  ) {
+    return null;
+  }
+
+  const multipliedNumerator = firstNumerator * secondDenominator;
+  const multipliedDenominator = firstDenominator * secondNumerator;
+  const simplified = simplifyFraction(multipliedNumerator, multipliedDenominator);
+
+  return [
+    `1. 나눗셈 뒤의 분수 ${formatFraction(
+      secondNumerator,
+      secondDenominator,
+    )}를 역수 ${formatFraction(secondDenominator, secondNumerator)}로 바꿉니다.`,
+    `2. 그래서 식은 ${formatFraction(
+      firstNumerator,
+      firstDenominator,
+    )} x ${formatFraction(secondDenominator, secondNumerator)}가 됩니다.`,
+    `3. 분자끼리, 분모끼리 곱하면 ${formatFraction(
+      multipliedNumerator,
+      multipliedDenominator,
+    )}입니다.`,
+    `4. 약분하면 ${formatFraction(
+      simplified.numerator,
+      simplified.denominator,
+    )}입니다.`,
+  ].join("\n");
+}
+
+function buildLinearEquationSolution(problemStatement: string) {
+  const match = problemStatement
+    .replace(/\s+/g, "")
+    .match(/^([+-]?\d*)x([+-]\d+)?=([+-]?\d*)x([+-]\d+)?/);
+
+  if (!match) {
+    return null;
+  }
+
+  const leftCoefficient = parseSignedNumber(match[1]);
+  const leftConstant = Number(match[2] ?? 0);
+  const rightCoefficient = parseSignedNumber(match[3]);
+  const rightConstant = Number(match[4] ?? 0);
+  const coefficient = leftCoefficient - rightCoefficient;
+  const constant = rightConstant - leftConstant;
+
+  if (coefficient === 0) {
+    return null;
+  }
+
+  const solution = simplifyFraction(constant, coefficient);
+  const formattedSolution = formatFraction(solution.numerator, solution.denominator);
+
+  return [
+    "1. 문자 x가 있는 항은 왼쪽으로, 숫자만 있는 항은 오른쪽으로 모읍니다.",
+    `2. x항을 정리하면 ${coefficient}x가 되고, 숫자항을 정리하면 ${constant}가 됩니다.`,
+    `3. 양변을 ${coefficient}로 나누면 x = ${formattedSolution}입니다.`,
+    "4. 구한 값을 원래 식에 대입해 양변이 같은지 확인합니다.",
+  ].join("\n");
+}
+
+function buildProblemSolution(
+  draft: AnalysisDraft,
+  rule: (typeof patternRules)[number],
+) {
+  const problemStatement = draft.problem_statement.trim();
+  const targetAnswer = draft.correct_answer.trim();
+  const wrongAnswer = draft.wrong_answer.trim();
+  const computedSolution =
+    buildFractionDivisionSolution(problemStatement) ??
+    buildLinearEquationSolution(problemStatement);
+  const solutionBody =
+    computedSolution ??
+    [
+      "1. 문제에서 구해야 하는 값을 먼저 표시합니다.",
+      "2. 주어진 조건과 숫자, 보기, 제한 범위를 따로 정리합니다.",
+      `3. ${rule.correctSolution}`,
+      "4. 풀이 중간마다 사용한 조건을 확인하고, 계산이 필요한 경우 한 줄에 한 연산만 적습니다.",
+      targetAnswer
+        ? `5. 마지막 결과가 "${targetAnswer}"와 같은지 확인합니다.`
+        : "5. 마지막 결과가 문제에서 요구한 답의 형태인지 확인합니다.",
+    ].join("\n");
+
+  return [
+    problemStatement ? `문제: ${problemStatement}` : "",
+    targetAnswer ? `정답: ${targetAnswer}` : "",
+    `풀이:\n${solutionBody}`,
+    wrongAnswer
+      ? `내 풀이와 비교: "${wrongAnswer}"에서 정답 풀이와 달라지는 첫 지점을 찾아 표시합니다. 그 지점이 이번 오답의 복습 포인트입니다.`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
 export function classifyWrongAnswer(draft: AnalysisDraft) {
   const joinedText = [
     draft.subject,
     draft.unit,
     draft.question_title,
+    draft.problem_statement,
     draft.wrong_answer,
     draft.correct_answer,
     draft.explanation,
@@ -105,14 +258,16 @@ export function classifyWrongAnswer(draft: AnalysisDraft) {
   ).length;
   const confidence = Math.min(94, 62 + filledFields * 5);
   const targetAnswer = draft.correct_answer.trim();
-  const correctSolution = draft.correct_answer.trim()
-    ? `이 문제의 목표 정답은 "${targetAnswer}"입니다.\n\n${matchedRule.correctSolution}\n\n풀이할 때는 마지막 결과가 "${targetAnswer}"이 되는지 확인해야 합니다. 만약 중간 과정에서 다른 값이 나오면, 오답 풀이와 처음 달라지는 줄을 찾아 그 단계부터 다시 고칩니다.`
-    : matchedRule.correctSolution;
+  const problemStatement = draft.problem_statement.trim();
+  const correctSolution = buildProblemSolution(draft, matchedRule);
   const mistakeReason = draft.explanation.trim()
     ? `${matchedRule.mistakeReason}\n\n추가 메모 기준: ${draft.explanation.trim()}`
     : matchedRule.mistakeReason;
   const detailedExplanation = [
     matchedRule.detailedExplanation,
+    problemStatement
+      ? `이 문제를 풀 때는 먼저 "${problemStatement}"에서 구해야 하는 값과 조건을 분리해야 합니다.`
+      : "",
     draft.wrong_answer.trim()
       ? `이번 오답에서는 "${draft.wrong_answer.trim()}" 부분을 기준으로, 풀이가 어디서 정답 방향과 달라졌는지 확인해야 합니다.`
       : "",
@@ -133,10 +288,11 @@ export function classifyWrongAnswer(draft: AnalysisDraft) {
     review_topics: matchedRule.reviewTopics,
     solution_steps: targetAnswer
       ? [
+          "문제 내용을 읽고 구해야 하는 값을 표시합니다.",
           ...matchedRule.solutionSteps,
           `마지막 결과가 "${targetAnswer}"인지 확인합니다.`,
         ]
-      : matchedRule.solutionSteps,
+      : ["문제 내용을 읽고 구해야 하는 값을 표시합니다.", ...matchedRule.solutionSteps],
     solution_strategy: matchedRule.solutionStrategy,
   };
 }

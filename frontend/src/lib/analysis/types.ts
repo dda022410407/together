@@ -11,6 +11,7 @@ export type AnalysisRecord = {
   subject: string;
   unit: string;
   question_title: string;
+  problem_statement: string;
   wrong_answer: string;
   correct_answer: string;
   explanation: string;
@@ -32,6 +33,7 @@ export type AnalysisDraft = {
   subject: string;
   unit: string;
   question_title: string;
+  problem_statement: string;
   wrong_answer: string;
   correct_answer: string;
   explanation: string;

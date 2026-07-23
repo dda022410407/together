@@ -23,6 +23,7 @@ const emptyDraft: AnalysisDraft = {
   subject: "수학",
   unit: "",
   question_title: "",
+  problem_statement: "",
   wrong_answer: "",
   correct_answer: "",
   explanation: "",
@@ -191,12 +192,13 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
       ...record,
       image_path: record.image_path ?? null,
       image_url: record.image_url ?? null,
+      problem_statement: record.problem_statement || record.question_title,
       review_topics: record.review_topics ?? [],
       solution_steps: record.solution_steps ?? [],
       correct_solution:
         record.correct_solution ||
         record.correct_answer ||
-        "문제의 정답을 입력하면 정답으로 가는 풀이가 이곳에 표시됩니다.",
+        "문제 내용과 정답을 입력하면 풀이가 이곳에 표시됩니다.",
       detailed_explanation:
         record.detailed_explanation ||
         "오답 내용과 정답 풀이를 비교해 어느 단계에서 생각이 달라졌는지 확인합니다.",
@@ -239,9 +241,9 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
       ...currentDraft,
       source_type: "upload",
       question_title: currentDraft.question_title || file.name,
-      wrong_answer: text.slice(0, 1200),
+      problem_statement: text.slice(0, 1600),
     }));
-    setSyncMessage("업로드한 텍스트를 오답 입력란에 반영했습니다.");
+    setSyncMessage("업로드한 텍스트를 문제 내용에 반영했습니다.");
   }
 
   function handleImageUpload(event: ChangeEvent<HTMLInputElement>) {
@@ -609,6 +611,18 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
                 />
               </label>
               <label className="grid gap-2 text-sm font-semibold sm:col-span-2">
+                문제 내용
+                <textarea
+                  className="min-h-32 resize-none rounded-lg border border-[var(--line)] bg-[var(--app-bg)] px-3 py-3 text-sm leading-6 outline-none focus:border-[var(--accent)] focus:bg-white"
+                  onChange={(event) =>
+                    updateDraft("problem_statement", event.target.value)
+                  }
+                  placeholder="문제 본문, 조건, 보기, 이미지 속 내용을 적습니다."
+                  required
+                  value={draft.problem_statement}
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-semibold sm:col-span-2">
                 내가 쓴 답/풀이
                 <textarea
                   className="min-h-28 resize-none rounded-lg border border-[var(--line)] bg-[var(--app-bg)] px-3 py-3 text-sm leading-6 outline-none focus:border-[var(--accent)] focus:bg-white"
@@ -626,6 +640,7 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
                     updateDraft("correct_answer", event.target.value)
                   }
                   placeholder="정답만 적어도 됩니다. 예: 3/2, x=4, ⑤"
+                  required
                   value={draft.correct_answer}
                 />
               </label>
@@ -700,7 +715,7 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
                 </div>
                 <div className="rounded-lg border border-[var(--line)] p-4">
                   <p className="text-sm font-semibold text-[var(--muted)]">
-                    정답으로 가는 풀이
+                    문제 풀이
                   </p>
                   <p className="mt-2 whitespace-pre-line text-sm leading-6">
                     {selectedRecord.correct_solution}

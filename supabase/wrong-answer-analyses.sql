@@ -7,6 +7,7 @@ create table if not exists public.wrong_answer_analyses (
   subject text not null,
   unit text not null,
   question_title text not null,
+  problem_statement text not null default '',
   wrong_answer text not null,
   correct_answer text not null default '',
   explanation text not null default '',
@@ -26,12 +27,17 @@ create table if not exists public.wrong_answer_analyses (
 alter table public.wrong_answer_analyses
   add column if not exists image_path text,
   add column if not exists image_url text,
+  add column if not exists problem_statement text not null default '',
   add column if not exists correct_solution text not null default '',
   add column if not exists detailed_explanation text not null default '',
   add column if not exists mistake_reason text not null default '',
   add column if not exists review_topics text[] not null default '{}',
   add column if not exists solution_steps text[] not null default '{}',
   add column if not exists solution_strategy text not null default '';
+
+update public.wrong_answer_analyses
+set problem_statement = question_title
+where problem_statement = '';
 
 alter table public.wrong_answer_analyses enable row level security;
 

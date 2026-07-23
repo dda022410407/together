@@ -39,6 +39,25 @@ update public.wrong_answer_analyses
 set problem_statement = question_title
 where problem_statement = '';
 
+update public.wrong_answer_analyses
+set
+  pattern = '정확 풀이 미지원',
+  confidence = least(confidence, 58),
+  correct_solution = concat(
+    '현재 저장된 문제 내용만으로는 정답이 왜 그 값인지 정확히 계산해 설명할 수 없습니다.',
+    E'\n정확한 풀이를 표시하려면 문제 본문을 텍스트로 입력하거나 AI 이미지 풀이 엔진을 연결해야 합니다.'
+  ),
+  detailed_explanation = '',
+  mistake_reason = '문제 본문 또는 이미지의 수학 정보가 충분하지 않아 오답 원인을 단정하지 않습니다.',
+  review_direction = '정확한 문제 본문 입력, OCR, 또는 AI 풀이 엔진 연결이 필요합니다.',
+  review_topics = array['풀이 엔진 연결 필요'],
+  solution_steps = '{}',
+  solution_strategy = ''
+where
+  problem_statement in ('img.png', '다운로드.webp', '사진에 있음.')
+  or correct_solution like '%문제에서 구해야 하는 값을 먼저 표시합니다%'
+  or detailed_explanation like '%어느 단계에서 생각이 달라졌는지 확인합니다%';
+
 alter table public.wrong_answer_analyses enable row level security;
 
 drop policy if exists "Users can read own wrong answer analyses"

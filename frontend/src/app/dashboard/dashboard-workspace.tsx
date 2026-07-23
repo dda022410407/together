@@ -195,19 +195,12 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
       problem_statement: record.problem_statement || record.question_title,
       review_topics: record.review_topics ?? [],
       solution_steps: record.solution_steps ?? [],
-      correct_solution:
-        record.correct_solution ||
-        record.correct_answer ||
-        "문제 내용과 정답을 입력하면 풀이가 이곳에 표시됩니다.",
-      detailed_explanation:
-        record.detailed_explanation ||
-        "오답 내용과 정답 풀이를 비교해 어느 단계에서 생각이 달라졌는지 확인합니다.",
+      correct_solution: record.correct_solution || "",
+      detailed_explanation: record.detailed_explanation || "",
       mistake_reason:
         record.mistake_reason ||
-        "오답 원인을 판단하려면 오답 내용과 정답 풀이를 함께 확인해야 합니다.",
-      solution_strategy:
-        record.solution_strategy ||
-        "문제 조건을 먼저 정리한 뒤 오답 원인을 기준으로 풀이 순서를 다시 세웁니다.",
+        "정확한 문제 풀이가 만들어진 뒤 오답 원인을 비교할 수 있습니다.",
+      solution_strategy: record.solution_strategy || "",
     };
   }
 
@@ -721,14 +714,16 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
                     {selectedRecord.correct_solution}
                   </p>
                 </div>
-                <div className="rounded-lg border border-[var(--line)] p-4">
-                  <p className="text-sm font-semibold text-[var(--muted)]">
-                    상세 해설
-                  </p>
-                  <p className="mt-2 whitespace-pre-line text-sm leading-6">
-                    {selectedRecord.detailed_explanation}
-                  </p>
-                </div>
+                {selectedRecord.detailed_explanation ? (
+                  <div className="rounded-lg border border-[var(--line)] p-4">
+                    <p className="text-sm font-semibold text-[var(--muted)]">
+                      상세 해설
+                    </p>
+                    <p className="mt-2 whitespace-pre-line text-sm leading-6">
+                      {selectedRecord.detailed_explanation}
+                    </p>
+                  </div>
+                ) : null}
                 <div className="rounded-lg border border-[var(--line)] bg-[var(--accent-soft)] p-4">
                   <p className="text-sm font-semibold text-[var(--accent)]">
                     추천 복습 방향
@@ -737,39 +732,45 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
                     {selectedRecord.review_direction}
                   </p>
                 </div>
-                <div className="rounded-lg border border-[var(--line)] p-4">
-                  <p className="text-sm font-semibold text-[var(--muted)]">
-                    풀이 전략
-                  </p>
-                  <p className="mt-2 text-sm leading-6">
-                    {selectedRecord.solution_strategy}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-[var(--line)] p-4">
-                  <p className="text-sm font-semibold text-[var(--muted)]">
-                    풀이 순서
-                  </p>
-                  <ol className="mt-3 grid list-decimal gap-2 pl-5 text-sm leading-6">
-                    {selectedRecord.solution_steps.map((step) => (
-                      <li key={step}>{step}</li>
-                    ))}
-                  </ol>
-                </div>
-                <div className="rounded-lg border border-[var(--line)] p-4">
-                  <p className="text-sm font-semibold text-[var(--muted)]">
-                    복습할 것
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {selectedRecord.review_topics.map((topic) => (
-                      <span
-                        className="rounded-lg bg-[var(--app-bg)] px-3 py-2 text-xs font-bold text-[var(--muted)]"
-                        key={topic}
-                      >
-                        {topic}
-                      </span>
-                    ))}
+                {selectedRecord.solution_strategy ? (
+                  <div className="rounded-lg border border-[var(--line)] p-4">
+                    <p className="text-sm font-semibold text-[var(--muted)]">
+                      풀이 전략
+                    </p>
+                    <p className="mt-2 text-sm leading-6">
+                      {selectedRecord.solution_strategy}
+                    </p>
                   </div>
-                </div>
+                ) : null}
+                {selectedRecord.solution_steps.length > 0 ? (
+                  <div className="rounded-lg border border-[var(--line)] p-4">
+                    <p className="text-sm font-semibold text-[var(--muted)]">
+                      풀이 순서
+                    </p>
+                    <ol className="mt-3 grid list-decimal gap-2 pl-5 text-sm leading-6">
+                      {selectedRecord.solution_steps.map((step) => (
+                        <li key={step}>{step}</li>
+                      ))}
+                    </ol>
+                  </div>
+                ) : null}
+                {selectedRecord.review_topics.length > 0 ? (
+                  <div className="rounded-lg border border-[var(--line)] p-4">
+                    <p className="text-sm font-semibold text-[var(--muted)]">
+                      복습할 것
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {selectedRecord.review_topics.map((topic) => (
+                        <span
+                          className="rounded-lg bg-[var(--app-bg)] px-3 py-2 text-xs font-bold text-[var(--muted)]"
+                          key={topic}
+                        >
+                          {topic}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : (
               <p className="mt-6 text-sm text-[var(--muted)]">

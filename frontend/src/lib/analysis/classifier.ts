@@ -83,6 +83,14 @@ const patternRules = [
   },
 ];
 
+type SolvedProblem = {
+  answer: string;
+  explanation: string;
+  steps: string[];
+  strategy: string;
+  reviewTopics: string[];
+};
+
 function gcd(left: number, right: number): number {
   let a = Math.abs(left);
   let b = Math.abs(right);
@@ -126,7 +134,7 @@ function parseSignedNumber(value: string) {
   return Number(normalized);
 }
 
-function buildFractionDivisionSolution(problemStatement: string) {
+function buildFractionDivisionSolution(problemStatement: string): SolvedProblem | null {
   const match = problemStatement.match(
     /(-?\d+)\s*\/\s*(-?\d+)\s*(?:÷|\/)\s*(-?\d+)\s*\/\s*(-?\d+)/,
   );
@@ -149,28 +157,32 @@ function buildFractionDivisionSolution(problemStatement: string) {
   const multipliedNumerator = firstNumerator * secondDenominator;
   const multipliedDenominator = firstDenominator * secondNumerator;
   const simplified = simplifyFraction(multipliedNumerator, multipliedDenominator);
+  const answer = formatFraction(simplified.numerator, simplified.denominator);
+  const originalLeft = formatFraction(firstNumerator, firstDenominator);
+  const originalRight = formatFraction(secondNumerator, secondDenominator);
+  const reciprocal = formatFraction(secondDenominator, secondNumerator);
+  const multiplied = formatFraction(multipliedNumerator, multipliedDenominator);
 
-  return [
-    `1. 나눗셈 뒤의 분수 ${formatFraction(
-      secondNumerator,
-      secondDenominator,
-    )}를 역수 ${formatFraction(secondDenominator, secondNumerator)}로 바꿉니다.`,
-    `2. 그래서 식은 ${formatFraction(
-      firstNumerator,
-      firstDenominator,
-    )} x ${formatFraction(secondDenominator, secondNumerator)}가 됩니다.`,
-    `3. 분자끼리, 분모끼리 곱하면 ${formatFraction(
-      multipliedNumerator,
-      multipliedDenominator,
-    )}입니다.`,
-    `4. 약분하면 ${formatFraction(
-      simplified.numerator,
-      simplified.denominator,
-    )}입니다.`,
-  ].join("\n");
+  return {
+    answer,
+    explanation: [
+      `${originalLeft}를 ${originalRight}로 나눈다는 것은 ${originalRight}이 ${originalLeft} 안에 몇 번 들어가는지 구하는 것입니다.`,
+      `분수 나눗셈은 나누는 수를 역수로 바꾸어 곱합니다. 그래서 ${originalLeft} ÷ ${originalRight} = ${originalLeft} x ${reciprocal}입니다.`,
+      `분자와 분모를 곱하면 ${multiplied}이고, 이를 약분하면 ${answer}입니다.`,
+      `따라서 이 문제의 정답은 ${answer}입니다.`,
+    ].join("\n"),
+    steps: [
+      `${originalRight}을 역수 ${reciprocal}로 바꿉니다.`,
+      `${originalLeft} x ${reciprocal}로 식을 다시 씁니다.`,
+      `분자끼리 곱해 ${multipliedNumerator}, 분모끼리 곱해 ${multipliedDenominator}를 얻습니다.`,
+      `${multiplied}를 약분해 ${answer}을 얻습니다.`,
+    ],
+    strategy: "분수 나눗셈에서는 두 번째 분수를 역수로 바꾼 뒤 곱셈으로 계산합니다.",
+    reviewTopics: ["역수", "분수 나눗셈", "약분"],
+  };
 }
 
-function buildLinearEquationSolution(problemStatement: string) {
+function buildLinearEquationSolution(problemStatement: string): SolvedProblem | null {
   const match = problemStatement
     .replace(/\s+/g, "")
     .match(/^([+-]?\d*)x([+-]\d+)?=([+-]?\d*)x([+-]\d+)?/);
@@ -192,43 +204,52 @@ function buildLinearEquationSolution(problemStatement: string) {
 
   const solution = simplifyFraction(constant, coefficient);
   const formattedSolution = formatFraction(solution.numerator, solution.denominator);
+  const answer = `x = ${formattedSolution}`;
 
-  return [
-    "1. 문자 x가 있는 항은 왼쪽으로, 숫자만 있는 항은 오른쪽으로 모읍니다.",
-    `2. x항을 정리하면 ${coefficient}x가 되고, 숫자항을 정리하면 ${constant}가 됩니다.`,
-    `3. 양변을 ${coefficient}로 나누면 x = ${formattedSolution}입니다.`,
-    "4. 구한 값을 원래 식에 대입해 양변이 같은지 확인합니다.",
-  ].join("\n");
+  return {
+    answer,
+    explanation: [
+      "일차방정식은 x가 있는 항과 숫자만 있는 항을 서로 다른 쪽으로 모아 풉니다.",
+      `왼쪽의 x항 ${leftCoefficient}x에서 오른쪽의 x항 ${rightCoefficient}x를 빼면 ${coefficient}x가 남습니다.`,
+      `오른쪽 상수 ${rightConstant}에서 왼쪽 상수 ${leftConstant}를 빼면 ${constant}가 됩니다.`,
+      `따라서 ${coefficient}x = ${constant}이고, 양변을 ${coefficient}로 나누면 ${answer}입니다.`,
+    ].join("\n"),
+    steps: [
+      "x가 있는 항은 왼쪽으로 모읍니다.",
+      "숫자만 있는 항은 오른쪽으로 모읍니다.",
+      `${coefficient}x = ${constant}로 정리합니다.`,
+      `양변을 ${coefficient}로 나누어 ${answer}을 얻습니다.`,
+    ],
+    strategy: "이항할 때 부호가 바뀌는 지점을 표시하고, 마지막에는 원래 식에 대입해 검산합니다.",
+    reviewTopics: ["이항", "부호 변화", "일차방정식 검산"],
+  };
 }
 
 function buildProblemSolution(
   draft: AnalysisDraft,
-  rule: (typeof patternRules)[number],
+  solvedProblem: SolvedProblem | null,
 ) {
   const problemStatement = draft.problem_statement.trim();
   const targetAnswer = draft.correct_answer.trim();
   const wrongAnswer = draft.wrong_answer.trim();
-  const computedSolution =
-    buildFractionDivisionSolution(problemStatement) ??
-    buildLinearEquationSolution(problemStatement);
-  const solutionBody =
-    computedSolution ??
-    [
-      "1. 문제에서 구해야 하는 값을 먼저 표시합니다.",
-      "2. 주어진 조건과 숫자, 보기, 제한 범위를 따로 정리합니다.",
-      `3. ${rule.correctSolution}`,
-      "4. 풀이 중간마다 사용한 조건을 확인하고, 계산이 필요한 경우 한 줄에 한 연산만 적습니다.",
-      targetAnswer
-        ? `5. 마지막 결과가 "${targetAnswer}"와 같은지 확인합니다.`
-        : "5. 마지막 결과가 문제에서 요구한 답의 형태인지 확인합니다.",
-    ].join("\n");
+
+  if (!solvedProblem) {
+    return [
+      problemStatement ? `문제: ${problemStatement}` : "",
+      targetAnswer ? `입력된 정답: ${targetAnswer}` : "",
+      "현재 로컬 풀이기는 이 문제의 정답이 왜 그렇게 나오는지 정확히 계산해 설명하지 못합니다.",
+      "정확한 풀이를 표시하려면 AI 풀이 엔진을 연결하거나, 정답 풀이 데이터를 함께 저장해야 합니다.",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+  }
 
   return [
     problemStatement ? `문제: ${problemStatement}` : "",
-    targetAnswer ? `정답: ${targetAnswer}` : "",
-    `풀이:\n${solutionBody}`,
+    `정답: ${targetAnswer || solvedProblem.answer}`,
+    `풀이:\n${solvedProblem.explanation}`,
     wrongAnswer
-      ? `내 풀이와 비교: "${wrongAnswer}"에서 정답 풀이와 달라지는 첫 지점을 찾아 표시합니다. 그 지점이 이번 오답의 복습 포인트입니다.`
+      ? `내 풀이와 비교: 내가 쓴 답/풀이 "${wrongAnswer}"와 정답 풀이의 결론 "${solvedProblem.answer}"이 다릅니다. 오답은 보통 위 풀이 단계 중 처음으로 다른 식을 쓴 지점에서 발생합니다.`
       : "",
   ]
     .filter(Boolean)
@@ -259,40 +280,35 @@ export function classifyWrongAnswer(draft: AnalysisDraft) {
   const confidence = Math.min(94, 62 + filledFields * 5);
   const targetAnswer = draft.correct_answer.trim();
   const problemStatement = draft.problem_statement.trim();
-  const correctSolution = buildProblemSolution(draft, matchedRule);
-  const mistakeReason = draft.explanation.trim()
-    ? `${matchedRule.mistakeReason}\n\n추가 메모 기준: ${draft.explanation.trim()}`
-    : matchedRule.mistakeReason;
-  const detailedExplanation = [
-    matchedRule.detailedExplanation,
-    problemStatement
-      ? `이 문제를 풀 때는 먼저 "${problemStatement}"에서 구해야 하는 값과 조건을 분리해야 합니다.`
-      : "",
-    draft.wrong_answer.trim()
-      ? `이번 오답에서는 "${draft.wrong_answer.trim()}" 부분을 기준으로, 풀이가 어디서 정답 방향과 달라졌는지 확인해야 합니다.`
-      : "",
-    draft.correct_answer.trim()
-      ? `정답 "${targetAnswer}"으로 가는 풀이와 비교할 때는 답 자체보다 첫 번째로 달라진 풀이 단계를 찾는 것이 중요합니다.`
-      : "",
-  ]
-    .filter(Boolean)
-    .join("\n\n");
+  const solvedProblem =
+    buildFractionDivisionSolution(problemStatement) ??
+    buildLinearEquationSolution(problemStatement);
+  const correctSolution = buildProblemSolution(draft, solvedProblem);
+  const mistakeReason = solvedProblem
+    ? draft.explanation.trim() || matchedRule.mistakeReason
+    : "이 문항은 아직 정확 풀이를 자동 생성할 수 없어 오답 원인을 단정하지 않습니다.";
+  const detailedExplanation = solvedProblem
+    ? [
+        `정답이 ${targetAnswer || solvedProblem.answer}인 이유는 위 풀이처럼 문제식을 변형했을 때 최종값이 ${solvedProblem.answer}로 정리되기 때문입니다.`,
+        draft.wrong_answer.trim()
+          ? `내가 쓴 답/풀이와 비교할 때는 결론보다 먼저 달라진 식 또는 부호를 확인해야 합니다.`
+          : "",
+      ]
+        .filter(Boolean)
+        .join("\n")
+    : "";
 
   return {
-    confidence,
+    confidence: solvedProblem ? confidence : Math.min(confidence, 58),
     correct_solution: correctSolution,
     detailed_explanation: detailedExplanation,
     mistake_reason: mistakeReason,
-    pattern: matchedRule.pattern,
-    review_direction: matchedRule.reviewDirection,
-    review_topics: matchedRule.reviewTopics,
-    solution_steps: targetAnswer
-      ? [
-          "문제 내용을 읽고 구해야 하는 값을 표시합니다.",
-          ...matchedRule.solutionSteps,
-          `마지막 결과가 "${targetAnswer}"인지 확인합니다.`,
-        ]
-      : ["문제 내용을 읽고 구해야 하는 값을 표시합니다.", ...matchedRule.solutionSteps],
-    solution_strategy: matchedRule.solutionStrategy,
+    pattern: solvedProblem ? matchedRule.pattern : "정확 풀이 미지원",
+    review_direction: solvedProblem
+      ? `정답 풀이의 각 줄을 내 풀이와 비교해 처음 달라진 단계를 복습합니다.`
+      : "정확 풀이 생성을 위해 AI 풀이 엔진 또는 정답 풀이 데이터 연결이 필요합니다.",
+    review_topics: solvedProblem ? solvedProblem.reviewTopics : ["풀이 엔진 연결 필요"],
+    solution_steps: solvedProblem?.steps ?? [],
+    solution_strategy: solvedProblem?.strategy ?? "",
   };
 }

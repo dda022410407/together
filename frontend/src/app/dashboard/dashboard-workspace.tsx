@@ -3,7 +3,11 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { classifyWrongAnswer } from "@/lib/analysis/classifier";
 import { sampleAnalyses } from "@/lib/analysis/sample-data";
-import { analysisTableName, type AnalysisInsert } from "@/lib/analysis/storage";
+import {
+  analysisImageBucketName,
+  analysisTableName,
+  type AnalysisInsert,
+} from "@/lib/analysis/storage";
 import type {
   AnalysisDraft,
   AnalysisRecord,
@@ -34,6 +38,8 @@ const statusLabels: Record<ReviewStatus, string> = {
   done: "완료",
 };
 
+const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];
+
 type DashboardWorkspaceProps = {
   userEmail: string | null;
 };
@@ -44,6 +50,8 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
   const [selectedRecord, setSelectedRecord] = useState<AnalysisRecord | null>(
     sampleAnalyses[0],
   );
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [syncMessage, setSyncMessage] = useState("Supabase 기록을 확인합니다.");
@@ -72,7 +80,9 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
         setRecords(sampleAnalyses);
         setSelectedRecord(sampleAnalyses[0]);
       } else {
-        const loadedRecords = (data ?? []) as AnalysisRecord[];
+        const loadedRecords = ((data ?? []) as AnalysisRecord[]).map(
+          normalizeRecord,
+        );
         setRecords(loadedRecords.length > 0 ? loadedRecords : sampleAnalyses);
         setSelectedRecord(loadedRecords[0] ?? sampleAnalyses[0]);
         setSyncMessage(
@@ -149,6 +159,19 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
     }));
   }
 
+  function normalizeRecord(record: AnalysisRecord): AnalysisRecord {
+    return {
+      ...record,
+      image_path: record.image_path ?? null,
+      image_url: record.image_url ?? null,
+      review_topics: record.review_topics ?? [],
+      solution_steps: record.solution_steps ?? [],
+      solution_strategy:
+        record.solution_strategy ||
+        "문제 조건을 먼저 정리한 뒤 오답 원인을 기준으로 풀이 순서를 다시 세웁니다.",
+    };
+  }
+
   async function handleUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
 
@@ -166,6 +189,75 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
     setSyncMessage("업로드한 텍스트를 오답 입력란에 반영했습니다.");
   }
 
+  function handleImageUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (!allowedImageTypes.includes(file.type)) {
+      setSyncMessage("이미지는 JPG, PNG, WebP 형식만 첨부할 수 있습니다.");
+      return;
+    }
+
+    if (imagePreviewUrl) {
+      URL.revokeObjectURL(imagePreviewUrl);
+    }
+
+    setImageFile(file);
+    setImagePreviewUrl(URL.createObjectURL(file));
+    setDraft((currentDraft) => ({
+      ...currentDraft,
+      source_type: "upload",
+      question_title: currentDraft.question_title || file.name,
+    }));
+    setSyncMessage("문제 이미지를 첨부했습니다. 설명을 함께 입력하면 분석 품질이 좋아집니다.");
+  }
+
+  function clearImage() {
+    if (imagePreviewUrl) {
+      URL.revokeObjectURL(imagePreviewUrl);
+    }
+
+    setImageFile(null);
+    setImagePreviewUrl(null);
+  }
+
+  async function uploadImage(userId: string) {
+    if (!imageFile) {
+      return { imagePath: null, imageUrl: null, uploadError: null };
+    }
+
+    const supabase = createClient();
+    const extension = imageFile.name.split(".").pop()?.toLowerCase() ?? "png";
+    const safeName = imageFile.name
+      .replace(/\.[^/.]+$/, "")
+      .replace(/[^a-zA-Z0-9가-힣_-]/g, "-")
+      .slice(0, 40);
+    const imagePath = `${userId}/${Date.now()}-${safeName}.${extension}`;
+    const { error } = await supabase.storage
+      .from(analysisImageBucketName)
+      .upload(imagePath, imageFile, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (error) {
+      return { imagePath: null, imageUrl: imagePreviewUrl, uploadError: error };
+    }
+
+    const { data } = supabase.storage
+      .from(analysisImageBucketName)
+      .getPublicUrl(imagePath);
+
+    return {
+      imagePath,
+      imageUrl: data.publicUrl,
+      uploadError: null,
+    };
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSaving(true);
@@ -173,11 +265,17 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
     const supabase = createClient();
     const { data: userData } = await supabase.auth.getUser();
     const classification = classifyWrongAnswer(draft);
+    const userId = userData.user?.id;
+    const { imagePath, imageUrl, uploadError } = userId
+      ? await uploadImage(userId)
+      : { imagePath: null, imageUrl: imagePreviewUrl, uploadError: null };
     const insertPayload: AnalysisInsert = {
       ...draft,
       ...classification,
+      image_path: imagePath,
+      image_url: imageUrl,
       status: "pending",
-      user_id: userData.user?.id,
+      user_id: userId,
     };
 
     const { data, error } = await supabase
@@ -186,23 +284,28 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
       .select("*")
       .single();
 
-    const nextRecord: AnalysisRecord = error
-      ? {
-          ...insertPayload,
-          id: `local-${Date.now()}`,
-          created_at: new Date().toISOString(),
-        }
-      : ((data as AnalysisRecord) ?? {
-          ...insertPayload,
-          id: `local-${Date.now()}`,
-          created_at: new Date().toISOString(),
-        });
+    const nextRecord: AnalysisRecord = normalizeRecord(
+      error
+        ? {
+            ...insertPayload,
+            id: `local-${Date.now()}`,
+            created_at: new Date().toISOString(),
+          }
+        : ((data as AnalysisRecord) ?? {
+            ...insertPayload,
+            id: `local-${Date.now()}`,
+            created_at: new Date().toISOString(),
+          }),
+    );
 
     setRecords((currentRecords) => [nextRecord, ...currentRecords]);
     setSelectedRecord(nextRecord);
     setDraft(emptyDraft);
+    clearImage();
     setSyncMessage(
-      error
+      uploadError
+        ? "이미지 Storage 업로드는 실패했지만 분석 기록은 화면에 반영했습니다. Storage 버킷 설정을 확인해주세요."
+        : error
         ? "Supabase 저장은 실패해 로컬 화면에만 반영했습니다. SQL 스키마 적용을 확인해주세요."
         : "Supabase에 새 오답 분석 기록을 저장했습니다.",
     );
@@ -303,10 +406,26 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
             </div>
 
             {draft.source_type === "upload" ? (
-              <label className="mt-4 grid gap-2 rounded-lg border border-dashed border-[var(--line)] bg-[var(--app-bg)] p-4 text-sm font-semibold">
-                텍스트 파일 업로드
-                <input accept=".txt,.md" onChange={handleUpload} type="file" />
-              </label>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <label className="grid gap-2 rounded-lg border border-dashed border-[var(--line)] bg-[var(--app-bg)] p-4 text-sm font-semibold">
+                  텍스트 파일 업로드
+                  <input accept=".txt,.md" onChange={handleUpload} type="file" />
+                  <span className="text-xs font-medium text-[var(--muted)]">
+                    문제 지문이나 풀이 메모를 텍스트로 불러옵니다.
+                  </span>
+                </label>
+                <label className="grid gap-2 rounded-lg border border-dashed border-[var(--line)] bg-[var(--app-bg)] p-4 text-sm font-semibold">
+                  문제 이미지 첨부
+                  <input
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleImageUpload}
+                    type="file"
+                  />
+                  <span className="text-xs font-medium text-[var(--muted)]">
+                    이미지 원본은 Supabase Storage에 저장합니다.
+                  </span>
+                </label>
+              </div>
             ) : null}
 
             {draft.source_type === "database" ? (
@@ -317,6 +436,52 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
             ) : null}
 
             <form className="mt-5 grid gap-4 sm:grid-cols-2" onSubmit={handleSubmit}>
+              <div className="grid gap-3 rounded-lg border border-[var(--line)] bg-[var(--app-bg)] p-4 sm:col-span-2 sm:grid-cols-[220px_1fr]">
+                <div className="flex min-h-36 items-center justify-center overflow-hidden rounded-lg border border-[var(--line)] bg-white">
+                  {imagePreviewUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      alt="첨부한 문제 이미지 미리보기"
+                      className="h-full max-h-48 w-full object-contain"
+                      src={imagePreviewUrl}
+                    />
+                  ) : (
+                    <span className="px-4 text-center text-sm font-semibold text-[var(--muted)]">
+                      문제 이미지 없음
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-col justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold">이미지 기반 분석 준비</p>
+                    <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                      이미지 자체는 Storage에 보관하고, 현재 분석은 입력한 오답 설명과
+                      교사 메모를 기준으로 진행합니다. 이후 OCR 또는 AI 비전 결과를
+                      같은 기록에 붙일 수 있습니다.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <label className="rounded-lg bg-white px-3 py-2 text-sm font-bold text-[var(--accent)] ring-1 ring-[var(--line)]">
+                      이미지 선택
+                      <input
+                        accept="image/jpeg,image/png,image/webp"
+                        className="sr-only"
+                        onChange={handleImageUpload}
+                        type="file"
+                      />
+                    </label>
+                    <button
+                      className="rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-bold text-[var(--muted)]"
+                      disabled={!imagePreviewUrl}
+                      onClick={clearImage}
+                      type="button"
+                    >
+                      이미지 제거
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <label className="grid gap-2 text-sm font-semibold">
                 과목
                 <input
@@ -378,7 +543,8 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
               </label>
               <div className="flex flex-col gap-3 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-[var(--muted)]">
-                  현재 분류는 프론트 규칙 기반이며, 이후 AI 서버 결과로 교체할 수 있습니다.
+                  현재 분류는 텍스트 설명 기반이며, 이미지는 Storage에 보관됩니다.
+                  이후 OCR/AI 비전 결과로 교체할 수 있습니다.
                 </p>
                 <button
                   className="rounded-lg bg-[var(--accent)] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#0c7779]"
@@ -406,6 +572,16 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
 
             {selectedRecord ? (
               <div className="mt-6 grid gap-4">
+                {selectedRecord.image_url ? (
+                  <div className="overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--app-bg)]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      alt={`${selectedRecord.question_title} 문제 이미지`}
+                      className="max-h-64 w-full object-contain"
+                      src={selectedRecord.image_url}
+                    />
+                  </div>
+                ) : null}
                 <div className="rounded-lg border border-[var(--line)] p-4">
                   <p className="text-sm font-semibold text-[var(--muted)]">
                     예측 패턴
@@ -431,6 +607,39 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
                   <p className="mt-2 text-sm leading-6">
                     {selectedRecord.review_direction}
                   </p>
+                </div>
+                <div className="rounded-lg border border-[var(--line)] p-4">
+                  <p className="text-sm font-semibold text-[var(--muted)]">
+                    어떻게 풀어야 하나
+                  </p>
+                  <p className="mt-2 text-sm leading-6">
+                    {selectedRecord.solution_strategy}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-[var(--line)] p-4">
+                  <p className="text-sm font-semibold text-[var(--muted)]">
+                    풀이 순서
+                  </p>
+                  <ol className="mt-3 grid list-decimal gap-2 pl-5 text-sm leading-6">
+                    {selectedRecord.solution_steps.map((step) => (
+                      <li key={step}>{step}</li>
+                    ))}
+                  </ol>
+                </div>
+                <div className="rounded-lg border border-[var(--line)] p-4">
+                  <p className="text-sm font-semibold text-[var(--muted)]">
+                    복습할 것
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {selectedRecord.review_topics.map((topic) => (
+                      <span
+                        className="rounded-lg bg-[var(--app-bg)] px-3 py-2 text-xs font-bold text-[var(--muted)]"
+                        key={topic}
+                      >
+                        {topic}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
             ) : (
@@ -515,6 +724,11 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
                   type="button"
                 >
                   {record.question_title}
+                  {record.image_url ? (
+                    <span className="ml-2 rounded bg-[var(--accent-soft)] px-2 py-1 text-xs text-[var(--accent)]">
+                      이미지
+                    </span>
+                  ) : null}
                 </button>
                 <span className="text-[var(--muted)]">{record.unit}</span>
                 <span className="text-[var(--muted)]">{record.pattern}</span>

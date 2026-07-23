@@ -4,6 +4,8 @@ export const sampleAnalyses: AnalysisRecord[] = [
   {
     id: "sample-1",
     source_type: "direct",
+    image_path: null,
+    image_url: null,
     subject: "수학",
     unit: "분수의 나눗셈",
     question_title: "분수 나눗셈 계산",
@@ -15,12 +17,22 @@ export const sampleAnalyses: AnalysisRecord[] = [
     confidence: 91,
     review_direction:
       "역수 변환의 의미를 먼저 확인하고 유사 문항 3개를 연속으로 풀어봅니다.",
+    review_topics: ["역수의 의미", "분수 나눗셈", "곱셈 변환"],
+    solution_steps: [
+      "나눗셈 기호 뒤의 분수를 역수로 바꿉니다.",
+      "분자끼리, 분모끼리 곱합니다.",
+      "계산 결과를 약분하고 원래 문제에 대입해 확인합니다.",
+    ],
+    solution_strategy:
+      "나눗셈을 바로 계산하지 말고 역수의 곱셈으로 바꾼 뒤 처리합니다.",
     status: "pending",
     created_at: "2026-07-22T09:00:00.000Z",
   },
   {
     id: "sample-2",
     source_type: "direct",
+    image_path: null,
+    image_url: null,
     subject: "수학",
     unit: "일차방정식",
     question_title: "이항 후 계수 계산",
@@ -30,12 +42,22 @@ export const sampleAnalyses: AnalysisRecord[] = [
     pattern: "계산 실수",
     confidence: 84,
     review_direction: "이항 단계마다 부호 변경을 표시하고 마지막에 대입 검산합니다.",
+    review_topics: ["이항", "부호 변화", "대입 검산"],
+    solution_steps: [
+      "문자의 항과 숫자 항을 양쪽으로 분리합니다.",
+      "항을 넘길 때 부호가 바뀌는지 표시합니다.",
+      "구한 값을 원래 방정식에 넣어 양변이 같은지 확인합니다.",
+    ],
+    solution_strategy:
+      "이항하는 순간을 표시하고, 마지막에는 반드시 원래 식으로 돌아가 검산합니다.",
     status: "done",
     created_at: "2026-07-21T12:30:00.000Z",
   },
   {
     id: "sample-3",
     source_type: "upload",
+    image_path: null,
+    image_url: null,
     subject: "수학",
     unit: "함수 그래프",
     question_title: "정의역 조건 확인",
@@ -45,6 +67,14 @@ export const sampleAnalyses: AnalysisRecord[] = [
     pattern: "조건 누락",
     confidence: 79,
     review_direction: "조건에 밑줄을 긋고 풀이 첫 줄에 범위를 다시 적습니다.",
+    review_topics: ["정의역", "범위 조건", "그래프 해석"],
+    solution_steps: [
+      "정의역과 제한 조건을 먼저 적습니다.",
+      "그래프에서 조건에 맞는 구간만 확인합니다.",
+      "답이 조건 범위를 벗어나지 않는지 검토합니다.",
+    ],
+    solution_strategy:
+      "그래프 모양을 보기 전에 정의역 조건으로 볼 수 있는 영역을 먼저 제한합니다.",
     status: "reviewing",
     created_at: "2026-07-20T15:10:00.000Z",
   },

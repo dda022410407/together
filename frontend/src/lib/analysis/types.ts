@@ -6,6 +6,8 @@ export type AnalysisRecord = {
   id: string;
   user_id?: string;
   source_type: InputSource;
+  image_path?: string | null;
+  image_url?: string | null;
   subject: string;
   unit: string;
   question_title: string;
@@ -15,6 +17,9 @@ export type AnalysisRecord = {
   pattern: string;
   confidence: number;
   review_direction: string;
+  review_topics: string[];
+  solution_steps: string[];
+  solution_strategy: string;
   status: ReviewStatus;
   created_at: string;
 };

@@ -193,6 +193,14 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
       image_url: record.image_url ?? null,
       review_topics: record.review_topics ?? [],
       solution_steps: record.solution_steps ?? [],
+      correct_solution:
+        record.correct_solution || record.correct_answer || "정답 풀이를 입력하면 이곳에 함께 표시됩니다.",
+      detailed_explanation:
+        record.detailed_explanation ||
+        "오답 내용과 정답 풀이를 비교해 어느 단계에서 생각이 달라졌는지 확인합니다.",
+      mistake_reason:
+        record.mistake_reason ||
+        "오답 원인을 판단하려면 오답 내용과 정답 풀이를 함께 확인해야 합니다.",
       solution_strategy:
         record.solution_strategy ||
         "문제 조건을 먼저 정리한 뒤 오답 원인을 기준으로 풀이 순서를 다시 세웁니다.",
@@ -609,7 +617,7 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
                 />
               </label>
               <label className="grid gap-2 text-sm font-semibold">
-                정답/기대 풀이
+                정답/모범 풀이
                 <textarea
                   className="min-h-24 resize-none rounded-lg border border-[var(--line)] bg-[var(--app-bg)] px-3 py-3 text-sm leading-6 outline-none focus:border-[var(--accent)] focus:bg-white"
                   onChange={(event) =>
@@ -663,7 +671,7 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
                 ) : null}
                 <div className="rounded-lg border border-[var(--line)] p-4">
                   <p className="text-sm font-semibold text-[var(--muted)]">
-                    예측 패턴
+                    오답 유형
                   </p>
                   <p className="mt-2 text-2xl font-bold">{selectedRecord.pattern}</p>
                 </div>
@@ -679,6 +687,30 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
                     />
                   </div>
                 </div>
+                <div className="rounded-lg border border-[var(--line)] bg-rose-50 p-4">
+                  <p className="text-sm font-semibold text-rose-700">
+                    왜 틀렸나
+                  </p>
+                  <p className="mt-2 whitespace-pre-line text-sm leading-6">
+                    {selectedRecord.mistake_reason}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-[var(--line)] p-4">
+                  <p className="text-sm font-semibold text-[var(--muted)]">
+                    정답/모범 풀이
+                  </p>
+                  <p className="mt-2 whitespace-pre-line text-sm leading-6">
+                    {selectedRecord.correct_solution}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-[var(--line)] p-4">
+                  <p className="text-sm font-semibold text-[var(--muted)]">
+                    상세 해설
+                  </p>
+                  <p className="mt-2 whitespace-pre-line text-sm leading-6">
+                    {selectedRecord.detailed_explanation}
+                  </p>
+                </div>
                 <div className="rounded-lg border border-[var(--line)] bg-[var(--accent-soft)] p-4">
                   <p className="text-sm font-semibold text-[var(--accent)]">
                     추천 복습 방향
@@ -689,7 +721,7 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
                 </div>
                 <div className="rounded-lg border border-[var(--line)] p-4">
                   <p className="text-sm font-semibold text-[var(--muted)]">
-                    어떻게 풀어야 하나
+                    풀이 전략
                   </p>
                   <p className="mt-2 text-sm leading-6">
                     {selectedRecord.solution_strategy}

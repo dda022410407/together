@@ -12,6 +12,9 @@ create table if not exists public.wrong_answer_analyses (
   explanation text not null default '',
   pattern text not null,
   confidence integer not null check (confidence between 0 and 100),
+  correct_solution text not null default '',
+  detailed_explanation text not null default '',
+  mistake_reason text not null default '',
   review_direction text not null,
   review_topics text[] not null default '{}',
   solution_steps text[] not null default '{}',
@@ -23,6 +26,9 @@ create table if not exists public.wrong_answer_analyses (
 alter table public.wrong_answer_analyses
   add column if not exists image_path text,
   add column if not exists image_url text,
+  add column if not exists correct_solution text not null default '',
+  add column if not exists detailed_explanation text not null default '',
+  add column if not exists mistake_reason text not null default '',
   add column if not exists review_topics text[] not null default '{}',
   add column if not exists solution_steps text[] not null default '{}',
   add column if not exists solution_strategy text not null default '';

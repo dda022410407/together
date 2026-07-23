@@ -16,6 +16,9 @@ export type AnalysisRecord = {
   explanation: string;
   pattern: string;
   confidence: number;
+  correct_solution: string;
+  detailed_explanation: string;
+  mistake_reason: string;
   review_direction: string;
   review_topics: string[];
   solution_steps: string[];

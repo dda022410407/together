@@ -15,6 +15,12 @@ export const sampleAnalyses: AnalysisRecord[] = [
     explanation: "나눗셈을 역수의 곱셈으로 바꾸는 과정을 놓쳤습니다.",
     pattern: "개념 혼동",
     confidence: 91,
+    correct_solution:
+      "나눗셈을 역수의 곱셈으로 바꾼 뒤 계산합니다. 3/4 ÷ 1/2는 3/4 × 2/1이 되고, 계산 결과는 6/4 = 3/2입니다.",
+    detailed_explanation:
+      "이 오답은 분수 나눗셈의 의미를 곱셈 변환과 연결하지 못해서 생긴 것입니다. 분수 나눗셈은 바로 분자끼리, 분모끼리 나누는 문제가 아니라 '몇 배가 되는가'를 묻는 구조입니다. 그래서 두 번째 분수를 역수로 바꿔 곱해야 합니다.",
+    mistake_reason:
+      "분수 나눗셈에서 역수로 바꾸는 개념을 놓치고, 보이는 숫자끼리 바로 계산했습니다.",
     review_direction:
       "역수 변환의 의미를 먼저 확인하고 유사 문항 3개를 연속으로 풀어봅니다.",
     review_topics: ["역수의 의미", "분수 나눗셈", "곱셈 변환"],
@@ -41,6 +47,12 @@ export const sampleAnalyses: AnalysisRecord[] = [
     explanation: "이항 과정에서 부호 변화 검산이 필요합니다.",
     pattern: "계산 실수",
     confidence: 84,
+    correct_solution:
+      "문자 항과 숫자 항을 분리한 뒤 계수를 나누어 x 값을 구합니다. 마지막에는 원래 식에 대입해 양변이 같은지 확인합니다.",
+    detailed_explanation:
+      "풀이 방향은 맞았지만 이항 과정에서 부호 변화를 놓쳤습니다. 방정식에서는 항을 등호 반대편으로 넘길 때 부호가 바뀌므로, 이 순간을 표시하지 않으면 답이 달라질 수 있습니다.",
+    mistake_reason:
+      "이항할 때 부호를 유지해서 중간식이 원래 식과 다른 의미가 되었습니다.",
     review_direction: "이항 단계마다 부호 변경을 표시하고 마지막에 대입 검산합니다.",
     review_topics: ["이항", "부호 변화", "대입 검산"],
     solution_steps: [
@@ -66,6 +78,12 @@ export const sampleAnalyses: AnalysisRecord[] = [
     explanation: "문제의 범위 조건을 풀이 중 사용하지 않았습니다.",
     pattern: "조건 누락",
     confidence: 79,
+    correct_solution:
+      "그래프를 해석하기 전에 정의역과 제한 조건을 먼저 적고, 해당 구간 안에서만 답을 찾습니다.",
+    detailed_explanation:
+      "그래프 문제에서는 모양만 보고 답을 고르면 조건을 놓치기 쉽습니다. 정의역이나 범위 제한은 답 후보를 걸러내는 기준이므로 풀이 첫 단계에서 따로 표시해야 합니다.",
+    mistake_reason:
+      "그래프의 전체 모양에 집중해 문제에서 제한한 정의역 조건을 적용하지 않았습니다.",
     review_direction: "조건에 밑줄을 긋고 풀이 첫 줄에 범위를 다시 적습니다.",
     review_topics: ["정의역", "범위 조건", "그래프 해석"],
     solution_steps: [

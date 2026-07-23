@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Together | 오답 분석 대시보드",
-  description: "AI 패턴 분류를 위한 Together 프론트엔드 대시보드",
+  title: "Together | 오답 분석",
+  description: "AI 패턴 분류를 위한 Together 프론트엔드",
 };
 
 export default function RootLayout({

@@ -1,232 +1,102 @@
-const overviewItems = [
-  { label: "분석한 문항", value: "128", note: "이번 주 +18" },
-  { label: "감지된 패턴", value: "12", note: "개념 혼동 중심" },
-  { label: "복습 대기", value: "34", note: "오늘 확인 권장" },
-  { label: "평균 신뢰도", value: "87%", note: "샘플 결과 기준" },
+const loginStats = [
+  { label: "분석 준비", value: "3단계" },
+  { label: "지원 입력", value: "직접 입력" },
+  { label: "현재 상태", value: "UI 뼈대" },
 ];
 
-const navigationItems = ["분석", "기록", "통계", "설정"];
-
-const recentAnalyses = [
-  {
-    question: "분수의 나눗셈",
-    pattern: "개념 혼동",
-    confidence: "91%",
-    status: "복습 필요",
-  },
-  {
-    question: "일차방정식",
-    pattern: "계산 실수",
-    confidence: "84%",
-    status: "확인 완료",
-  },
-  {
-    question: "함수 그래프",
-    pattern: "조건 누락",
-    confidence: "79%",
-    status: "분류 보류",
-  },
-];
-
-export default function Home() {
+export default function LoginPage() {
   return (
     <main className="min-h-screen bg-[var(--app-bg)] text-[var(--app-fg)]">
-      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-4 sm:px-6 lg:px-8">
-        <header className="flex flex-col gap-4 border-b border-[var(--line)] bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <div className="mx-auto grid min-h-screen w-full max-w-6xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-center lg:px-8">
+        <section className="flex flex-col justify-between gap-10 border border-[var(--line)] bg-white p-6 shadow-sm sm:p-8 lg:min-h-[640px]">
           <div>
-            <p className="text-sm font-semibold text-[var(--accent)]">
-              Together
-            </p>
-            <h1 className="text-2xl font-bold text-[var(--app-fg)]">
-              오답 분석 대시보드
+            <p className="text-sm font-bold text-[var(--accent)]">Together</p>
+            <h1 className="mt-3 max-w-2xl text-4xl font-bold leading-tight sm:text-5xl">
+              오답을 모으고, 패턴을 분류하고, 다음 복습을 정합니다.
             </h1>
+            <p className="mt-5 max-w-xl text-base leading-7 text-[var(--muted)]">
+              학생의 오답 데이터를 기반으로 유형과 취약 단원을 확인하는
+              학습 분석 서비스의 로그인 화면입니다.
+            </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
-              UI 뼈대 제작 중
-            </span>
-            <div className="flex items-center gap-3 rounded-lg border border-[var(--line)] px-3 py-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-sm font-bold text-[var(--accent)]">
-                T
-              </div>
-              <div className="leading-tight">
-                <p className="text-sm font-semibold">팀원</p>
-                <p className="text-xs text-[var(--muted)]">프론트 담당</p>
-              </div>
-            </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            {loginStats.map((item) => (
+              <article
+                className="border border-[var(--line)] bg-[var(--app-bg)] p-4"
+                key={item.label}
+              >
+                <p className="text-sm font-semibold text-[var(--muted)]">
+                  {item.label}
+                </p>
+                <strong className="mt-2 block text-2xl">{item.value}</strong>
+              </article>
+            ))}
           </div>
-        </header>
+        </section>
 
-        <div className="grid flex-1 gap-4 py-4 lg:grid-cols-[220px_1fr]">
-          <aside className="border border-[var(--line)] bg-white p-3 shadow-sm">
-            <nav className="grid grid-cols-2 gap-2 lg:grid-cols-1">
-              {navigationItems.map((item, index) => (
-                <a
-                  className={`rounded-lg px-3 py-3 text-sm font-semibold transition ${
-                    index === 0
-                      ? "bg-[var(--accent)] text-white"
-                      : "text-[var(--muted)] hover:bg-[var(--app-bg)] hover:text-[var(--app-fg)]"
-                  }`}
-                  href="#"
-                  key={item}
-                >
-                  {item}
-                </a>
-              ))}
-            </nav>
-          </aside>
+        <section className="border border-[var(--line)] bg-white p-6 shadow-sm sm:p-8">
+          <div>
+            <h2 className="text-2xl font-bold">로그인</h2>
+            <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+              아직 인증 연동 전이므로 입력 폼과 화면 흐름만 확인합니다.
+            </p>
+          </div>
 
-          <section className="flex flex-col gap-4">
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {overviewItems.map((item) => (
-                <article
-                  className="border border-[var(--line)] bg-white p-4 shadow-sm"
-                  key={item.label}
-                >
-                  <p className="text-sm font-medium text-[var(--muted)]">
-                    {item.label}
-                  </p>
-                  <div className="mt-3 flex items-end justify-between gap-3">
-                    <strong className="text-3xl font-bold">{item.value}</strong>
-                    <span className="rounded-lg bg-[var(--app-bg)] px-2 py-1 text-xs font-semibold text-[var(--muted)]">
-                      {item.note}
-                    </span>
-                  </div>
-                </article>
-              ))}
+          <form className="mt-6 grid gap-4">
+            <label className="grid gap-2 text-sm font-semibold">
+              이메일
+              <input
+                className="rounded-lg border border-[var(--line)] bg-[var(--app-bg)] px-3 py-3 text-sm outline-none transition focus:border-[var(--accent)] focus:bg-white"
+                placeholder="team@example.com"
+                type="email"
+              />
+            </label>
+
+            <label className="grid gap-2 text-sm font-semibold">
+              비밀번호
+              <input
+                className="rounded-lg border border-[var(--line)] bg-[var(--app-bg)] px-3 py-3 text-sm outline-none transition focus:border-[var(--accent)] focus:bg-white"
+                placeholder="비밀번호 입력"
+                type="password"
+              />
+            </label>
+
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <label className="flex items-center gap-2 font-medium text-[var(--muted)]">
+                <input
+                  className="h-4 w-4 accent-[var(--accent)]"
+                  type="checkbox"
+                />
+                로그인 유지
+              </label>
+              <a className="font-semibold text-[var(--accent)]" href="#">
+                비밀번호 찾기
+              </a>
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
-              <section className="border border-[var(--line)] bg-white p-5 shadow-sm">
-                <div className="flex flex-col gap-1">
-                  <h2 className="text-xl font-bold">오답 입력</h2>
-                  <p className="text-sm text-[var(--muted)]">
-                    실제 분석 API 연결 전까지는 샘플 데이터로 화면 흐름만 확인합니다.
-                  </p>
-                </div>
+            <button
+              className="mt-2 rounded-lg bg-[var(--disabled)] px-4 py-3 text-sm font-bold text-white"
+              disabled
+              type="button"
+            >
+              로그인 준비 중
+            </button>
+          </form>
 
-                <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                  <label className="grid gap-2 text-sm font-semibold">
-                    사용자 ID
-                    <input
-                      className="rounded-lg border border-[var(--line)] bg-[var(--app-bg)] px-3 py-3 text-sm font-medium text-[var(--muted)] outline-none"
-                      readOnly
-                      value="student-001"
-                    />
-                  </label>
-                  <label className="grid gap-2 text-sm font-semibold">
-                    문항 ID
-                    <input
-                      className="rounded-lg border border-[var(--line)] bg-[var(--app-bg)] px-3 py-3 text-sm font-medium text-[var(--muted)] outline-none"
-                      readOnly
-                      value="math-fraction-24"
-                    />
-                  </label>
-                  <label className="grid gap-2 text-sm font-semibold sm:col-span-2">
-                    오답 내용
-                    <textarea
-                      className="min-h-32 resize-none rounded-lg border border-[var(--line)] bg-[var(--app-bg)] px-3 py-3 text-sm leading-6 text-[var(--muted)] outline-none"
-                      readOnly
-                      value="3/4 ÷ 1/2 문제에서 분모끼리, 분자끼리 바로 나누어 3/2가 아닌 3/8로 계산했습니다."
-                    />
-                  </label>
-                </div>
-
-                <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-sm text-[var(--muted)]">
-                    백엔드 연동은 이후 작업에서 별도로 연결합니다.
-                  </p>
-                  <button
-                    className="rounded-lg bg-[var(--disabled)] px-4 py-3 text-sm font-bold text-white"
-                    disabled
-                    type="button"
-                  >
-                    분석 요청 준비 중
-                  </button>
-                </div>
-              </section>
-
-              <section className="border border-[var(--line)] bg-white p-5 shadow-sm">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h2 className="text-xl font-bold">샘플 분석 결과</h2>
-                    <p className="mt-1 text-sm text-[var(--muted)]">
-                      Mock 데이터
-                    </p>
-                  </div>
-                  <span className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700">
-                    대기
-                  </span>
-                </div>
-
-                <div className="mt-6 grid gap-4">
-                  <div className="rounded-lg border border-[var(--line)] p-4">
-                    <p className="text-sm font-semibold text-[var(--muted)]">
-                      예측 패턴
-                    </p>
-                    <p className="mt-2 text-2xl font-bold">개념 혼동</p>
-                  </div>
-                  <div className="rounded-lg border border-[var(--line)] p-4">
-                    <div className="flex items-center justify-between text-sm font-semibold">
-                      <span className="text-[var(--muted)]">신뢰도</span>
-                      <span>87%</span>
-                    </div>
-                    <div className="mt-3 h-2 rounded-lg bg-[var(--app-bg)]">
-                      <div className="h-2 w-[87%] rounded-lg bg-[var(--accent)]" />
-                    </div>
-                  </div>
-                  <div className="rounded-lg border border-[var(--line)] bg-[var(--accent-soft)] p-4">
-                    <p className="text-sm font-semibold text-[var(--accent)]">
-                      추천 복습 방향
-                    </p>
-                    <p className="mt-2 text-sm leading-6">
-                      나눗셈을 역수의 곱셈으로 바꾸는 과정을 먼저 확인하고,
-                      계산 규칙과 의미를 함께 비교합니다.
-                    </p>
-                  </div>
-                </div>
-              </section>
-            </div>
-
-            <section className="border border-[var(--line)] bg-white p-5 shadow-sm">
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <h2 className="text-xl font-bold">최근 분석 기록</h2>
-                  <p className="text-sm text-[var(--muted)]">
-                    샘플 기록으로 리스트 밀도와 상태 표현을 확인합니다.
-                  </p>
-                </div>
-                <span className="text-sm font-semibold text-[var(--accent)]">
-                  총 3건
-                </span>
-              </div>
-
-              <div className="mt-5 overflow-hidden border border-[var(--line)]">
-                <div className="hidden grid-cols-[1.2fr_1fr_100px_110px] bg-[var(--app-bg)] px-4 py-3 text-sm font-bold text-[var(--muted)] md:grid">
-                  <span>문항</span>
-                  <span>패턴</span>
-                  <span>신뢰도</span>
-                  <span>상태</span>
-                </div>
-                {recentAnalyses.map((analysis) => (
-                  <div
-                    className="grid gap-3 border-t border-[var(--line)] px-4 py-4 text-sm md:grid-cols-[1.2fr_1fr_100px_110px] md:items-center"
-                    key={analysis.question}
-                  >
-                    <strong>{analysis.question}</strong>
-                    <span className="text-[var(--muted)]">
-                      {analysis.pattern}
-                    </span>
-                    <span className="font-semibold">{analysis.confidence}</span>
-                    <span className="rounded-lg bg-[var(--app-bg)] px-2 py-1 text-xs font-bold text-[var(--muted)]">
-                      {analysis.status}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </section>
-        </div>
+          <div className="mt-6 grid gap-3">
+            <a
+              className="rounded-lg border border-[var(--line)] px-4 py-3 text-center text-sm font-bold transition hover:bg-[var(--app-bg)]"
+              href="/dashboard"
+            >
+              대시보드 미리보기
+            </a>
+            <p className="text-center text-xs leading-5 text-[var(--muted)]">
+              회원가입과 실제 로그인 처리는 백엔드 인증 정책이 정해진 뒤
+              연결합니다.
+            </p>
+          </div>
+        </section>
       </div>
     </main>
   );

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { SignOutButton } from "@/app/dashboard/sign-out-button";
 import { getSessionState } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +35,7 @@ const recentAnalyses = [
 ];
 
 export default async function DashboardPage() {
-  const { isAuthenticated } = await getSessionState();
+  const { email, isAuthenticated } = await getSessionState();
 
   if (!isAuthenticated) {
     redirect("/?next=/dashboard");
@@ -61,10 +62,13 @@ export default async function DashboardPage() {
                 T
               </div>
               <div className="leading-tight">
-                <p className="text-sm font-semibold">팀원</p>
-                <p className="text-xs text-[var(--muted)]">프론트 담당</p>
+                <p className="text-sm font-semibold">로그인 사용자</p>
+                <p className="text-xs text-[var(--muted)]">
+                  {email ?? "Supabase Auth"}
+                </p>
               </div>
             </div>
+            <SignOutButton />
           </div>
         </header>
 

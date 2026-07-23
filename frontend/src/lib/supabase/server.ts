@@ -35,12 +35,15 @@ export async function getSessionState() {
   const supabase = await createClient();
 
   if (!supabase) {
-    return { isConfigured: false, isAuthenticated: false };
+    return { email: null, isConfigured: false, isAuthenticated: false };
   }
 
   const { data, error } = await supabase.auth.getClaims();
+  const email =
+    typeof data?.claims?.email === "string" ? data.claims.email : null;
 
   return {
+    email,
     isConfigured: true,
     isAuthenticated: !error && Boolean(data?.claims),
   };

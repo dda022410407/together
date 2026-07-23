@@ -1,7 +1,12 @@
+import Link from "next/link";
+import { Suspense } from "react";
+import { LoginForm } from "@/app/login-form";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
+
 const loginStats = [
   { label: "분석 준비", value: "3단계" },
-  { label: "지원 입력", value: "직접 입력" },
-  { label: "현재 상태", value: "UI 뼈대" },
+  { label: "인증 기준", value: "Supabase" },
+  { label: "미리보기", value: "분리 운영" },
 ];
 
 export default function LoginPage() {
@@ -39,61 +44,30 @@ export default function LoginPage() {
           <div>
             <h2 className="text-2xl font-bold">로그인</h2>
             <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-              아직 인증 연동 전이므로 입력 폼과 화면 흐름만 확인합니다.
+              실제 분석 기능은 Supabase 로그인 이후 대시보드에서 사용합니다.
             </p>
           </div>
 
-          <form className="mt-6 grid gap-4">
-            <label className="grid gap-2 text-sm font-semibold">
-              이메일
-              <input
-                className="rounded-lg border border-[var(--line)] bg-[var(--app-bg)] px-3 py-3 text-sm outline-none transition focus:border-[var(--accent)] focus:bg-white"
-                placeholder="team@example.com"
-                type="email"
-              />
-            </label>
-
-            <label className="grid gap-2 text-sm font-semibold">
-              비밀번호
-              <input
-                className="rounded-lg border border-[var(--line)] bg-[var(--app-bg)] px-3 py-3 text-sm outline-none transition focus:border-[var(--accent)] focus:bg-white"
-                placeholder="비밀번호 입력"
-                type="password"
-              />
-            </label>
-
-            <div className="flex items-center justify-between gap-3 text-sm">
-              <label className="flex items-center gap-2 font-medium text-[var(--muted)]">
-                <input
-                  className="h-4 w-4 accent-[var(--accent)]"
-                  type="checkbox"
-                />
-                로그인 유지
-              </label>
-              <a className="font-semibold text-[var(--accent)]" href="#">
-                비밀번호 찾기
-              </a>
-            </div>
-
-            <button
-              className="mt-2 rounded-lg bg-[var(--disabled)] px-4 py-3 text-sm font-bold text-white"
-              disabled
-              type="button"
-            >
-              로그인 준비 중
-            </button>
-          </form>
+          <Suspense
+            fallback={
+              <p className="mt-6 text-sm text-[var(--muted)]">
+                로그인 폼을 준비하는 중입니다.
+              </p>
+            }
+          >
+            <LoginForm isSupabaseConfigured={isSupabaseConfigured} />
+          </Suspense>
 
           <div className="mt-6 grid gap-3">
-            <a
+            <Link
               className="rounded-lg border border-[var(--line)] px-4 py-3 text-center text-sm font-bold transition hover:bg-[var(--app-bg)]"
-              href="/dashboard"
+              href="/preview"
             >
-              대시보드 미리보기
-            </a>
+              기능 미리보기
+            </Link>
             <p className="text-center text-xs leading-5 text-[var(--muted)]">
-              회원가입과 실제 로그인 처리는 백엔드 인증 정책이 정해진 뒤
-              연결합니다.
+              미리보기에서는 기능 구성만 확인하고, 입력/분석/기록 기능은
+              로그인 후 활성화됩니다.
             </p>
           </div>
         </section>

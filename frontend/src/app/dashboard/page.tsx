@@ -1,3 +1,8 @@
+import { redirect } from "next/navigation";
+import { getSessionState } from "@/lib/supabase/server";
+
+export const dynamic = "force-dynamic";
+
 const overviewItems = [
   { label: "분석한 문항", value: "128", note: "이번 주 +18" },
   { label: "감지된 패턴", value: "12", note: "개념 혼동 중심" },
@@ -28,7 +33,13 @@ const recentAnalyses = [
   },
 ];
 
-export default function Home() {
+export default async function DashboardPage() {
+  const { isAuthenticated } = await getSessionState();
+
+  if (!isAuthenticated) {
+    redirect("/?next=/dashboard");
+  }
+
   return (
     <main className="min-h-screen bg-[var(--app-bg)] text-[var(--app-fg)]">
       <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-4 sm:px-6 lg:px-8">
@@ -43,7 +54,7 @@ export default function Home() {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <span className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
-              UI 뼈대 제작 중
+              로그인 세션 확인됨
             </span>
             <div className="flex items-center gap-3 rounded-lg border border-[var(--line)] px-3 py-2">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-sm font-bold text-[var(--accent)]">

@@ -104,8 +104,9 @@ export function classifyWrongAnswer(draft: AnalysisDraft) {
     (value) => value.trim().length > 0,
   ).length;
   const confidence = Math.min(94, 62 + filledFields * 5);
+  const targetAnswer = draft.correct_answer.trim();
   const correctSolution = draft.correct_answer.trim()
-    ? `${matchedRule.correctSolution}\n\n입력한 정답/모범 풀이: ${draft.correct_answer.trim()}`
+    ? `이 문제의 목표 정답은 "${targetAnswer}"입니다.\n\n${matchedRule.correctSolution}\n\n풀이할 때는 마지막 결과가 "${targetAnswer}"이 되는지 확인해야 합니다. 만약 중간 과정에서 다른 값이 나오면, 오답 풀이와 처음 달라지는 줄을 찾아 그 단계부터 다시 고칩니다.`
     : matchedRule.correctSolution;
   const mistakeReason = draft.explanation.trim()
     ? `${matchedRule.mistakeReason}\n\n추가 메모 기준: ${draft.explanation.trim()}`
@@ -116,7 +117,7 @@ export function classifyWrongAnswer(draft: AnalysisDraft) {
       ? `이번 오답에서는 "${draft.wrong_answer.trim()}" 부분을 기준으로, 풀이가 어디서 정답 방향과 달라졌는지 확인해야 합니다.`
       : "",
     draft.correct_answer.trim()
-      ? "정답/모범 풀이와 비교할 때는 답 자체보다 첫 번째로 달라진 풀이 단계를 찾는 것이 중요합니다."
+      ? `정답 "${targetAnswer}"으로 가는 풀이와 비교할 때는 답 자체보다 첫 번째로 달라진 풀이 단계를 찾는 것이 중요합니다.`
       : "",
   ]
     .filter(Boolean)
@@ -130,7 +131,12 @@ export function classifyWrongAnswer(draft: AnalysisDraft) {
     pattern: matchedRule.pattern,
     review_direction: matchedRule.reviewDirection,
     review_topics: matchedRule.reviewTopics,
-    solution_steps: matchedRule.solutionSteps,
+    solution_steps: targetAnswer
+      ? [
+          ...matchedRule.solutionSteps,
+          `마지막 결과가 "${targetAnswer}"인지 확인합니다.`,
+        ]
+      : matchedRule.solutionSteps,
     solution_strategy: matchedRule.solutionStrategy,
   };
 }

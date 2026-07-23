@@ -194,7 +194,9 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
       review_topics: record.review_topics ?? [],
       solution_steps: record.solution_steps ?? [],
       correct_solution:
-        record.correct_solution || record.correct_answer || "정답 풀이를 입력하면 이곳에 함께 표시됩니다.",
+        record.correct_solution ||
+        record.correct_answer ||
+        "문제의 정답을 입력하면 정답으로 가는 풀이가 이곳에 표시됩니다.",
       detailed_explanation:
         record.detailed_explanation ||
         "오답 내용과 정답 풀이를 비교해 어느 단계에서 생각이 달라졌는지 확인합니다.",
@@ -607,22 +609,23 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
                 />
               </label>
               <label className="grid gap-2 text-sm font-semibold sm:col-span-2">
-                오답 내용
+                내가 쓴 답/풀이
                 <textarea
                   className="min-h-28 resize-none rounded-lg border border-[var(--line)] bg-[var(--app-bg)] px-3 py-3 text-sm leading-6 outline-none focus:border-[var(--accent)] focus:bg-white"
                   onChange={(event) => updateDraft("wrong_answer", event.target.value)}
-                  placeholder="학생이 어떤 방식으로 틀렸는지 입력합니다."
+                  placeholder="내가 적은 답, 틀린 풀이 과정, 헷갈린 부분을 적습니다."
                   required
                   value={draft.wrong_answer}
                 />
               </label>
               <label className="grid gap-2 text-sm font-semibold">
-                정답/모범 풀이
+                문제의 정답
                 <textarea
                   className="min-h-24 resize-none rounded-lg border border-[var(--line)] bg-[var(--app-bg)] px-3 py-3 text-sm leading-6 outline-none focus:border-[var(--accent)] focus:bg-white"
                   onChange={(event) =>
                     updateDraft("correct_answer", event.target.value)
                   }
+                  placeholder="정답만 적어도 됩니다. 예: 3/2, x=4, ⑤"
                   value={draft.correct_answer}
                 />
               </label>
@@ -697,7 +700,7 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
                 </div>
                 <div className="rounded-lg border border-[var(--line)] p-4">
                   <p className="text-sm font-semibold text-[var(--muted)]">
-                    정답/모범 풀이
+                    정답으로 가는 풀이
                   </p>
                   <p className="mt-2 whitespace-pre-line text-sm leading-6">
                     {selectedRecord.correct_solution}

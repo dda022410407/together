@@ -1,0 +1,51 @@
+import type { AnalysisRecord } from "@/lib/analysis/types";
+
+export const sampleAnalyses: AnalysisRecord[] = [
+  {
+    id: "sample-1",
+    source_type: "direct",
+    subject: "수학",
+    unit: "분수의 나눗셈",
+    question_title: "분수 나눗셈 계산",
+    wrong_answer:
+      "3/4 ÷ 1/2 문제에서 분모끼리, 분자끼리 바로 나누어 3/8로 계산했습니다.",
+    correct_answer: "3/4 × 2/1 = 3/2",
+    explanation: "나눗셈을 역수의 곱셈으로 바꾸는 과정을 놓쳤습니다.",
+    pattern: "개념 혼동",
+    confidence: 91,
+    review_direction:
+      "역수 변환의 의미를 먼저 확인하고 유사 문항 3개를 연속으로 풀어봅니다.",
+    status: "pending",
+    created_at: "2026-07-22T09:00:00.000Z",
+  },
+  {
+    id: "sample-2",
+    source_type: "direct",
+    subject: "수학",
+    unit: "일차방정식",
+    question_title: "이항 후 계수 계산",
+    wrong_answer: "x항을 이항한 뒤 부호를 바꾸지 않아 답을 다르게 냈습니다.",
+    correct_answer: "2x = 8, x = 4",
+    explanation: "이항 과정에서 부호 변화 검산이 필요합니다.",
+    pattern: "계산 실수",
+    confidence: 84,
+    review_direction: "이항 단계마다 부호 변경을 표시하고 마지막에 대입 검산합니다.",
+    status: "done",
+    created_at: "2026-07-21T12:30:00.000Z",
+  },
+  {
+    id: "sample-3",
+    source_type: "upload",
+    subject: "수학",
+    unit: "함수 그래프",
+    question_title: "정의역 조건 확인",
+    wrong_answer: "그래프 모양만 보고 정의역 제한 조건을 반영하지 않았습니다.",
+    correct_answer: "정의역 범위를 먼저 제한한 뒤 그래프를 해석합니다.",
+    explanation: "문제의 범위 조건을 풀이 중 사용하지 않았습니다.",
+    pattern: "조건 누락",
+    confidence: 79,
+    review_direction: "조건에 밑줄을 긋고 풀이 첫 줄에 범위를 다시 적습니다.",
+    status: "reviewing",
+    created_at: "2026-07-20T15:10:00.000Z",
+  },
+];

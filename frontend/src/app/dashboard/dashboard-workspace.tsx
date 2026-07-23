@@ -54,6 +54,7 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [schemaReady, setSchemaReady] = useState(false);
   const [syncMessage, setSyncMessage] = useState("Supabase 기록을 확인합니다.");
 
   useEffect(() => {
@@ -74,12 +75,14 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
       }
 
       if (error) {
+        setSchemaReady(false);
         setSyncMessage(
           "Supabase 테이블 준비 전이라 샘플 데이터로 화면을 표시합니다.",
         );
         setRecords(sampleAnalyses);
         setSelectedRecord(sampleAnalyses[0]);
       } else {
+        setSchemaReady(true);
         const loadedRecords = ((data ?? []) as AnalysisRecord[]).map(
           normalizeRecord,
         );
@@ -752,11 +755,25 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
         </section>
 
         <section className="border border-[var(--line)] bg-white p-5 shadow-sm" id="설정">
-          <h2 className="text-xl font-bold">Supabase 설정</h2>
-          <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-            `supabase/wrong-answer-analyses.sql`을 Supabase SQL editor에서 실행하면
-            기록 저장과 상태 변경이 사용자별로 분리됩니다.
-          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-xl font-bold">Supabase 설정</h2>
+              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                {schemaReady
+                  ? "테이블 연결이 확인되었습니다. 이제 기록 저장과 상태 변경이 사용자별로 분리됩니다."
+                  : "`supabase/wrong-answer-analyses.sql`을 Supabase SQL editor에서 실행하면 기록 저장과 상태 변경이 사용자별로 분리됩니다."}
+              </p>
+            </div>
+            <span
+              className={`rounded-lg px-3 py-2 text-xs font-bold ${
+                schemaReady
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-amber-50 text-amber-700"
+              }`}
+            >
+              {schemaReady ? "연결 완료" : "설정 필요"}
+            </span>
+          </div>
         </section>
       </section>
     </div>

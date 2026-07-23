@@ -40,23 +40,61 @@ create policy "Users can read own wrong answer analyses"
   on public.wrong_answer_analyses
   for select
   to authenticated
-  using (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id);
 
 create policy "Users can insert own wrong answer analyses"
   on public.wrong_answer_analyses
   for insert
   to authenticated
-  with check (auth.uid() = user_id);
+  with check ((select auth.uid()) = user_id);
 
 create policy "Users can update own wrong answer analyses"
   on public.wrong_answer_analyses
   for update
   to authenticated
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
 
 create index if not exists wrong_answer_analyses_user_created_idx
   on public.wrong_answer_analyses (user_id, created_at desc);
+
+create table if not exists public.user_analysis_settings (
+  user_id uuid primary key references auth.users(id) on delete cascade default auth.uid(),
+  default_subject text not null default '수학',
+  default_source_type text not null default 'direct'
+    check (default_source_type in ('direct', 'upload', 'database')),
+  auto_select_new_record boolean not null default true,
+  show_sample_records boolean not null default false,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.user_analysis_settings enable row level security;
+
+drop policy if exists "Users can read own analysis settings"
+  on public.user_analysis_settings;
+drop policy if exists "Users can insert own analysis settings"
+  on public.user_analysis_settings;
+drop policy if exists "Users can update own analysis settings"
+  on public.user_analysis_settings;
+
+create policy "Users can read own analysis settings"
+  on public.user_analysis_settings
+  for select
+  to authenticated
+  using ((select auth.uid()) = user_id);
+
+create policy "Users can insert own analysis settings"
+  on public.user_analysis_settings
+  for insert
+  to authenticated
+  with check ((select auth.uid()) = user_id);
+
+create policy "Users can update own analysis settings"
+  on public.user_analysis_settings
+  for update
+  to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
 
 insert into storage.buckets (id, name, public)
 values ('wrong-answer-images', 'wrong-answer-images', true)
@@ -75,14 +113,8 @@ create policy "Users can upload own wrong answer images"
   to authenticated
   with check (
     bucket_id = 'wrong-answer-images'
-    and (storage.foldername(name))[1] = auth.uid()::text
+    and (storage.foldername(name))[1] = (select auth.uid())::text
   );
-
-create policy "Users can read wrong answer images"
-  on storage.objects
-  for select
-  to authenticated
-  using (bucket_id = 'wrong-answer-images');
 
 create policy "Users can update own wrong answer images"
   on storage.objects
@@ -90,9 +122,9 @@ create policy "Users can update own wrong answer images"
   to authenticated
   using (
     bucket_id = 'wrong-answer-images'
-    and (storage.foldername(name))[1] = auth.uid()::text
+    and (storage.foldername(name))[1] = (select auth.uid())::text
   )
   with check (
     bucket_id = 'wrong-answer-images'
-    and (storage.foldername(name))[1] = auth.uid()::text
+    and (storage.foldername(name))[1] = (select auth.uid())::text
   );

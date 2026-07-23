@@ -33,3 +33,12 @@ export type AnalysisDraft = {
   correct_answer: string;
   explanation: string;
 };
+
+export type AnalysisSettings = {
+  user_id?: string;
+  default_subject: string;
+  default_source_type: InputSource;
+  auto_select_new_record: boolean;
+  show_sample_records: boolean;
+  updated_at?: string;
+};

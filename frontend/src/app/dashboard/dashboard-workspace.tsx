@@ -5,12 +5,14 @@ import { classifyWrongAnswer } from "@/lib/analysis/classifier";
 import { sampleAnalyses } from "@/lib/analysis/sample-data";
 import {
   analysisImageBucketName,
+  analysisSettingsTableName,
   analysisTableName,
   type AnalysisInsert,
 } from "@/lib/analysis/storage";
 import type {
   AnalysisDraft,
   AnalysisRecord,
+  AnalysisSettings,
   InputSource,
   ReviewStatus,
 } from "@/lib/analysis/types";
@@ -40,6 +42,13 @@ const statusLabels: Record<ReviewStatus, string> = {
 
 const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];
 
+const defaultSettings: AnalysisSettings = {
+  default_subject: "수학",
+  default_source_type: "direct",
+  auto_select_new_record: true,
+  show_sample_records: false,
+};
+
 type DashboardWorkspaceProps = {
   userEmail: string | null;
 };
@@ -53,9 +62,11 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [settings, setSettings] = useState<AnalysisSettings>(defaultSettings);
   const [schemaReady, setSchemaReady] = useState(false);
-  const [syncMessage, setSyncMessage] = useState("Supabase 기록을 확인합니다.");
+  const [syncMessage, setSyncMessage] = useState("동기화 중");
 
   useEffect(() => {
     let isMounted = true;
@@ -64,35 +75,48 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
       setIsLoading(true);
 
       const supabase = createClient();
-      const { data, error } = await supabase
-        .from(analysisTableName)
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(30);
+      const [recordsResult, settingsResult] = await Promise.all([
+        supabase
+          .from(analysisTableName)
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(30),
+        supabase.from(analysisSettingsTableName).select("*").maybeSingle(),
+      ]);
 
       if (!isMounted) {
         return;
       }
 
-      if (error) {
+      if (settingsResult.data) {
+        const nextSettings = normalizeSettings(settingsResult.data);
+        setSettings(nextSettings);
+        setDraft((currentDraft) => ({
+          ...currentDraft,
+          source_type: nextSettings.default_source_type,
+          subject: nextSettings.default_subject,
+        }));
+      }
+
+      if (recordsResult.error) {
         setSchemaReady(false);
-        setSyncMessage(
-          "Supabase 테이블 준비 전이라 샘플 데이터로 화면을 표시합니다.",
-        );
+        setSyncMessage("설정 필요");
         setRecords(sampleAnalyses);
         setSelectedRecord(sampleAnalyses[0]);
       } else {
         setSchemaReady(true);
-        const loadedRecords = ((data ?? []) as AnalysisRecord[]).map(
+        const loadedRecords = ((recordsResult.data ?? []) as AnalysisRecord[]).map(
           normalizeRecord,
         );
-        setRecords(loadedRecords.length > 0 ? loadedRecords : sampleAnalyses);
-        setSelectedRecord(loadedRecords[0] ?? sampleAnalyses[0]);
-        setSyncMessage(
-          loadedRecords.length > 0
-            ? "Supabase에서 내 분석 기록을 불러왔습니다."
-            : "아직 저장된 기록이 없어 샘플 데이터로 시작합니다.",
+        const shouldUseSamples =
+          loadedRecords.length === 0 &&
+          (settingsResult.data as AnalysisSettings | null)?.show_sample_records;
+
+        setRecords(shouldUseSamples ? sampleAnalyses : loadedRecords);
+        setSelectedRecord(
+          shouldUseSamples ? sampleAnalyses[0] : (loadedRecords[0] ?? null),
         );
+        setSyncMessage(loadedRecords.length > 0 ? "연결 완료" : "기록 없음");
       }
 
       setIsLoading(false);
@@ -137,7 +161,7 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
     {
       label: "감지된 패턴",
       value: String(stats.patternEntries.length),
-      note: "규칙 기반 임시 분류",
+      note: "분류 결과",
     },
     {
       label: "복습 대기",
@@ -147,7 +171,7 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
     {
       label: "평균 신뢰도",
       value: `${stats.confidenceAverage}%`,
-      note: "입력 충실도 반영",
+      note: "평균값",
     },
   ];
 
@@ -173,6 +197,24 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
         record.solution_strategy ||
         "문제 조건을 먼저 정리한 뒤 오답 원인을 기준으로 풀이 순서를 다시 세웁니다.",
     };
+  }
+
+  function normalizeSettings(value: Partial<AnalysisSettings>): AnalysisSettings {
+    return {
+      ...defaultSettings,
+      ...value,
+      default_source_type:
+        value.default_source_type && value.default_source_type in sourceLabels
+          ? value.default_source_type
+          : defaultSettings.default_source_type,
+    };
+  }
+
+  function updateSettings(field: keyof AnalysisSettings, value: string | boolean) {
+    setSettings((currentSettings) => ({
+      ...currentSettings,
+      [field]: value,
+    }));
   }
 
   async function handleUpload(event: ChangeEvent<HTMLInputElement>) {
@@ -302,15 +344,21 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
     );
 
     setRecords((currentRecords) => [nextRecord, ...currentRecords]);
-    setSelectedRecord(nextRecord);
-    setDraft(emptyDraft);
+    if (settings.auto_select_new_record) {
+      setSelectedRecord(nextRecord);
+    }
+    setDraft({
+      ...emptyDraft,
+      source_type: settings.default_source_type,
+      subject: settings.default_subject,
+    });
     clearImage();
     setSyncMessage(
       uploadError
         ? "이미지 Storage 업로드는 실패했지만 분석 기록은 화면에 반영했습니다. Storage 버킷 설정을 확인해주세요."
         : error
         ? "Supabase 저장은 실패해 로컬 화면에만 반영했습니다. SQL 스키마 적용을 확인해주세요."
-        : "Supabase에 새 오답 분석 기록을 저장했습니다.",
+        : "저장 완료",
     );
     setIsSaving(false);
   }
@@ -326,11 +374,57 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
     );
 
     if (record.id.startsWith("sample-") || record.id.startsWith("local-")) {
+      setSyncMessage("샘플/임시 기록은 DB에 저장되지 않습니다.");
       return;
     }
 
     const supabase = createClient();
-    await supabase.from(analysisTableName).update({ status }).eq("id", record.id);
+    const { error } = await supabase
+      .from(analysisTableName)
+      .update({ status })
+      .eq("id", record.id);
+
+    setSyncMessage(error ? "상태 저장 실패" : "상태 저장 완료");
+  }
+
+  async function saveSettings(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSavingSettings(true);
+
+    const supabase = createClient();
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+
+    if (!userId) {
+      setSyncMessage("로그인 세션 확인 필요");
+      setIsSavingSettings(false);
+      return;
+    }
+
+    const payload: AnalysisSettings = {
+      ...settings,
+      user_id: userId,
+    };
+    const { data, error } = await supabase
+      .from(analysisSettingsTableName)
+      .upsert(payload, { onConflict: "user_id" })
+      .select("*")
+      .single();
+
+    if (error) {
+      setSyncMessage("설정 저장 실패");
+    } else {
+      const nextSettings = normalizeSettings(data as AnalysisSettings);
+      setSettings(nextSettings);
+      setDraft((currentDraft) => ({
+        ...currentDraft,
+        source_type: nextSettings.default_source_type,
+        subject: currentDraft.subject || nextSettings.default_subject,
+      }));
+      setSyncMessage("설정 저장 완료");
+    }
+
+    setIsSavingSettings(false);
   }
 
   return (
@@ -374,7 +468,7 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
         </div>
 
         <div className="border border-[var(--line)] bg-white px-4 py-3 text-sm text-[var(--muted)] shadow-sm">
-          <strong className="text-[var(--app-fg)]">Supabase 상태</strong>
+          <strong className="text-[var(--app-fg)]">DB</strong>
           <span className="ml-2">{isLoading ? "동기화 중" : syncMessage}</span>
           <span className="ml-2 text-xs">사용자: {userEmail ?? "세션 확인됨"}</span>
         </div>
@@ -386,9 +480,6 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
           <section className="border border-[var(--line)] bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-1">
               <h2 className="text-xl font-bold">오답 입력/분석</h2>
-              <p className="text-sm text-[var(--muted)]">
-                로그인한 사용자의 오답을 Supabase에 저장하고 복습 상태를 관리합니다.
-              </p>
             </div>
 
             <div className="mt-5 grid grid-cols-3 gap-2 rounded-lg bg-[var(--app-bg)] p-1">
@@ -413,9 +504,6 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
                 <label className="grid gap-2 rounded-lg border border-dashed border-[var(--line)] bg-[var(--app-bg)] p-4 text-sm font-semibold">
                   텍스트 파일 업로드
                   <input accept=".txt,.md" onChange={handleUpload} type="file" />
-                  <span className="text-xs font-medium text-[var(--muted)]">
-                    문제 지문이나 풀이 메모를 텍스트로 불러옵니다.
-                  </span>
                 </label>
                 <label className="grid gap-2 rounded-lg border border-dashed border-[var(--line)] bg-[var(--app-bg)] p-4 text-sm font-semibold">
                   문제 이미지 첨부
@@ -424,17 +512,13 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
                     onChange={handleImageUpload}
                     type="file"
                   />
-                  <span className="text-xs font-medium text-[var(--muted)]">
-                    이미지 원본은 Supabase Storage에 저장합니다.
-                  </span>
                 </label>
               </div>
             ) : null}
 
             {draft.source_type === "database" ? (
               <div className="mt-4 rounded-lg border border-[var(--line)] bg-[var(--accent-soft)] p-4 text-sm leading-6 text-[var(--accent)]">
-                기존 DB 연동은 Supabase 테이블을 기준으로 진행합니다. 지금은
-                수동 입력 후 저장하면 동일 테이블에 기록됩니다.
+                Supabase 저장 기록을 기준으로 관리합니다.
               </div>
             ) : null}
 
@@ -456,11 +540,9 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
                 </div>
                 <div className="flex flex-col justify-between gap-3">
                   <div>
-                    <p className="text-sm font-bold">이미지 기반 분석 준비</p>
+                    <p className="text-sm font-bold">문제 이미지</p>
                     <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                      이미지 자체는 Storage에 보관하고, 현재 분석은 입력한 오답 설명과
-                      교사 메모를 기준으로 진행합니다. 이후 OCR 또는 AI 비전 결과를
-                      같은 기록에 붙일 수 있습니다.
+                      이미지는 Storage에 저장됩니다.
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -545,10 +627,7 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
                 />
               </label>
               <div className="flex flex-col gap-3 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-[var(--muted)]">
-                  현재 분류는 텍스트 설명 기반이며, 이미지는 Storage에 보관됩니다.
-                  이후 OCR/AI 비전 결과로 교체할 수 있습니다.
-                </p>
+                <p className="text-sm text-[var(--muted)]">새 문제 저장 시 결과 패널이 갱신됩니다.</p>
                 <button
                   className="rounded-lg bg-[var(--accent)] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#0c7779]"
                   disabled={isSaving}
@@ -564,9 +643,6 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-xl font-bold">분석 결과</h2>
-                <p className="mt-1 text-sm text-[var(--muted)]">
-                  선택한 기록 또는 방금 저장한 결과
-                </p>
               </div>
               <span className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">
                 {selectedRecord ? statusLabels[selectedRecord.status] : "대기"}
@@ -699,9 +775,6 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
           <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-xl font-bold">최근 분석 기록</h2>
-              <p className="text-sm text-[var(--muted)]">
-                Supabase에서 불러온 내 기록과 임시 샘플을 함께 표시합니다.
-              </p>
             </div>
             <span className="text-sm font-semibold text-[var(--accent)]">
               총 {records.length}건
@@ -751,29 +824,101 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
                 </select>
               </div>
             ))}
+            {records.length === 0 ? (
+              <div className="border-t border-[var(--line)] px-4 py-8 text-center text-sm text-[var(--muted)]">
+                저장된 문제가 없습니다.
+              </div>
+            ) : null}
           </div>
         </section>
 
         <section className="border border-[var(--line)] bg-white p-5 shadow-sm" id="설정">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h2 className="text-xl font-bold">Supabase 설정</h2>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                {schemaReady
-                  ? "테이블 연결이 확인되었습니다. 이제 기록 저장과 상태 변경이 사용자별로 분리됩니다."
-                  : "`supabase/wrong-answer-analyses.sql`을 Supabase SQL editor에서 실행하면 기록 저장과 상태 변경이 사용자별로 분리됩니다."}
-              </p>
+          <form className="grid gap-4" onSubmit={saveSettings}>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-xl font-bold">설정</h2>
+                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                  {schemaReady ? "연결 완료" : "SQL 설정 필요"}
+                </p>
+              </div>
+              <span
+                className={`rounded-lg px-3 py-2 text-xs font-bold ${
+                  schemaReady
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "bg-amber-50 text-amber-700"
+                }`}
+              >
+                {schemaReady ? "DB 연결" : "대기"}
+              </span>
             </div>
-            <span
-              className={`rounded-lg px-3 py-2 text-xs font-bold ${
-                schemaReady
-                  ? "bg-emerald-50 text-emerald-700"
-                  : "bg-amber-50 text-amber-700"
-              }`}
-            >
-              {schemaReady ? "연결 완료" : "설정 필요"}
-            </span>
-          </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="grid gap-2 text-sm font-semibold">
+                기본 과목
+                <input
+                  className="rounded-lg border border-[var(--line)] bg-[var(--app-bg)] px-3 py-3 text-sm outline-none focus:border-[var(--accent)] focus:bg-white"
+                  onChange={(event) =>
+                    updateSettings("default_subject", event.target.value)
+                  }
+                  value={settings.default_subject}
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-semibold">
+                기본 입력 방식
+                <select
+                  className="rounded-lg border border-[var(--line)] bg-[var(--app-bg)] px-3 py-3 text-sm outline-none focus:border-[var(--accent)] focus:bg-white"
+                  onChange={(event) =>
+                    updateSettings(
+                      "default_source_type",
+                      event.target.value as InputSource,
+                    )
+                  }
+                  value={settings.default_source_type}
+                >
+                  {(Object.keys(sourceLabels) as InputSource[]).map((sourceType) => (
+                    <option key={sourceType} value={sourceType}>
+                      {sourceLabels[sourceType]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="flex items-center gap-2 text-sm font-semibold text-[var(--muted)]">
+                <input
+                  checked={settings.auto_select_new_record}
+                  className="h-4 w-4 accent-[var(--accent)]"
+                  onChange={(event) =>
+                    updateSettings("auto_select_new_record", event.target.checked)
+                  }
+                  type="checkbox"
+                />
+                새 문제 저장 후 결과 보기
+              </label>
+              <label className="flex items-center gap-2 text-sm font-semibold text-[var(--muted)]">
+                <input
+                  checked={settings.show_sample_records}
+                  className="h-4 w-4 accent-[var(--accent)]"
+                  onChange={(event) =>
+                    updateSettings("show_sample_records", event.target.checked)
+                  }
+                  type="checkbox"
+                />
+                기록 없을 때 샘플 표시
+              </label>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                className="rounded-lg bg-[var(--accent)] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#0c7779]"
+                disabled={isSavingSettings}
+                type="submit"
+              >
+                {isSavingSettings ? "저장 중" : "설정 저장"}
+              </button>
+            </div>
+          </form>
         </section>
       </section>
     </div>

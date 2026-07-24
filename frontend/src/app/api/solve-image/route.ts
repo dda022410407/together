@@ -146,9 +146,6 @@ export async function POST(request: Request) {
           ],
         },
       ],
-      generationConfig: {
-        temperature: 0.2,
-      },
       system_instruction: {
         parts: [
           {

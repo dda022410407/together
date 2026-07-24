@@ -10,42 +10,63 @@ type SolveImageRequest = {
   wrongAnswer?: string;
 };
 
-type OpenAiErrorResponse = {
+type GeminiErrorResponse = {
   error?: {
     code?: string;
     message?: string;
-    type?: string;
+    status?: string;
   };
 };
 
-const openAiApiKey = process.env.OPENAI_API_KEY ?? "";
-const openAiVisionModel = process.env.OPENAI_VISION_MODEL ?? "gpt-5-mini";
+type GeminiResponse = {
+  candidates?: Array<{
+    content?: {
+      parts?: Array<{
+        text?: string;
+      }>;
+    };
+  }>;
+};
 
-function isValidImageDataUrl(value: string) {
-  return /^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+$/.test(value);
+const geminiApiKey = process.env.GEMINI_API_KEY ?? "";
+const geminiModel = process.env.GEMINI_MODEL ?? "gemini-3.6-flash";
+
+function parseImageDataUrl(value: string) {
+  const match = value.match(
+    /^data:(image\/(?:png|jpeg|jpg|webp));base64,([A-Za-z0-9+/=]+)$/i,
+  );
+
+  if (!match) {
+    return null;
+  }
+
+  return {
+    data: match[2],
+    mimeType: match[1].toLowerCase() === "image/jpg" ? "image/jpeg" : match[1],
+  };
 }
 
 function getOutputText(value: unknown) {
-  if (
-    value &&
-    typeof value === "object" &&
-    "output_text" in value &&
-    typeof value.output_text === "string"
-  ) {
-    return value.output_text.trim();
-  }
+  const response = value as GeminiResponse;
+  const texts =
+    response.candidates?.flatMap(
+      (candidate) =>
+        candidate.content?.parts
+          ?.map((part) => part.text?.trim() ?? "")
+          .filter(Boolean) ?? [],
+    ) ?? [];
 
-  return "";
+  return texts.join("\n").trim();
 }
 
-function getOpenAiErrorMessage(value: unknown) {
-  const error = (value as OpenAiErrorResponse | null)?.error;
+function getGeminiErrorMessage(value: unknown) {
+  const error = (value as GeminiErrorResponse | null)?.error;
 
   if (!error) {
     return "";
   }
 
-  return [error.message, error.type, error.code].filter(Boolean).join(" / ");
+  return [error.message, error.status, error.code].filter(Boolean).join(" / ");
 }
 
 export async function POST(request: Request) {
@@ -56,18 +77,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "로그인 후 이용할 수 있습니다." }, { status: 401 });
   }
 
-  if (!openAiApiKey) {
+  if (!geminiApiKey) {
     return NextResponse.json(
-      { error: "서버에 OPENAI_API_KEY가 설정되어 있지 않습니다." },
+      { error: "서버에 GEMINI_API_KEY가 설정되어 있지 않습니다." },
       { status: 503 },
     );
   }
 
   const body = (await request.json()) as SolveImageRequest;
   const imageDataUrl = body.imageDataUrl?.trim() ?? "";
+  const imageData = parseImageDataUrl(imageDataUrl);
   const correctAnswer = body.correctAnswer?.trim() ?? "";
 
-  if (!imageDataUrl || !isValidImageDataUrl(imageDataUrl)) {
+  if (!imageData) {
     return NextResponse.json(
       { error: "PNG, JPG, WebP 문제 이미지를 먼저 첨부해주세요." },
       { status: 400 },
@@ -81,30 +103,30 @@ export async function POST(request: Request) {
     );
   }
 
-  const response = await fetch("https://api.openai.com/v1/responses", {
+  const modelPath = geminiModel.startsWith("models/")
+    ? geminiModel
+    : `models/${geminiModel}`;
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/${modelPath}:generateContent?key=${encodeURIComponent(
+      geminiApiKey,
+    )}`,
+    {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${openAiApiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: openAiVisionModel,
-      input: [
-        {
-          role: "system",
-          content: [
-            {
-              type: "input_text",
-              text:
-                "너는 한국어 수학/학습 풀이 튜터다. 문제 이미지와 사용자가 입력한 정답을 보고, 왜 그 정답이 나오는지 풀이만 설명한다. 이미지에서 문제를 읽을 수 없거나 정답이 이미지 내용과 맞는지 판단할 수 없으면 모르는 척하지 말고 정확히 무엇이 부족한지 말한다.",
-            },
-          ],
-        },
+      contents: [
         {
           role: "user",
-          content: [
+          parts: [
             {
-              type: "input_text",
+              inline_data: {
+                data: imageData.data,
+                mime_type: imageData.mimeType,
+              },
+            },
+            {
               text: [
                 `과목: ${body.subject?.trim() || "미입력"}`,
                 `단원: ${body.unit?.trim() || "미입력"}`,
@@ -121,24 +143,31 @@ export async function POST(request: Request) {
                 "4. 답만 반복하거나 일반 공부 조언으로 채우지 마세요.",
               ].join("\n"),
             },
-            {
-              type: "input_image",
-              image_url: imageDataUrl,
-              detail: "high",
-            },
           ],
         },
       ],
+      generationConfig: {
+        temperature: 0.2,
+      },
+      system_instruction: {
+        parts: [
+          {
+            text:
+              "너는 한국어 수학/학습 풀이 튜터다. 문제 이미지와 사용자가 입력한 정답을 보고, 왜 그 정답이 나오는지 풀이만 설명한다. 이미지에서 문제를 읽을 수 없거나 정답이 이미지 내용과 맞는지 판단할 수 없으면 모르는 척하지 말고 정확히 무엇이 부족한지 말한다.",
+          },
+        ],
+      },
     }),
-  });
+    },
+  );
 
   const result = (await response.json()) as unknown;
 
   if (!response.ok) {
-    const detailMessage = getOpenAiErrorMessage(result);
+    const detailMessage = getGeminiErrorMessage(result);
     const rateLimitMessage =
       response.status === 429
-        ? "OpenAI 사용량 한도, 결제 상태, 또는 요청 제한 때문에 풀이를 생성하지 못했습니다."
+        ? "Gemini 사용량 한도, 결제 상태, 또는 요청 제한 때문에 풀이를 생성하지 못했습니다."
         : "AI 풀이 생성에 실패했습니다.";
 
     return NextResponse.json(
@@ -154,7 +183,7 @@ export async function POST(request: Request) {
 
   if (!solution) {
     return NextResponse.json(
-      { error: "AI가 풀이 텍스트를 반환하지 않았습니다." },
+      { error: "Gemini가 풀이 텍스트를 반환하지 않았습니다." },
       { status: 502 },
     );
   }

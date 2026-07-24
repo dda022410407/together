@@ -14,6 +14,7 @@ export type AnalysisRecord = {
   problem_statement: string;
   wrong_answer: string;
   correct_answer: string;
+  provided_solution: string;
   explanation: string;
   pattern: string;
   confidence: number;
@@ -36,6 +37,7 @@ export type AnalysisDraft = {
   problem_statement: string;
   wrong_answer: string;
   correct_answer: string;
+  provided_solution: string;
   explanation: string;
 };
 

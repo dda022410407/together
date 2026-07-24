@@ -26,6 +26,7 @@ const emptyDraft: AnalysisDraft = {
   problem_statement: "",
   wrong_answer: "",
   correct_answer: "",
+  provided_solution: "",
   explanation: "",
 };
 
@@ -193,6 +194,7 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
       image_path: record.image_path ?? null,
       image_url: record.image_url ?? null,
       problem_statement: record.problem_statement || record.question_title,
+      provided_solution: record.provided_solution || "",
       review_topics: record.review_topics ?? [],
       solution_steps: record.solution_steps ?? [],
       correct_solution: record.correct_solution || "",
@@ -638,6 +640,17 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
                 />
               </label>
               <label className="grid gap-2 text-sm font-semibold">
+                문제의 옳은 풀이
+                <textarea
+                  className="min-h-24 resize-none rounded-lg border border-[var(--line)] bg-[var(--app-bg)] px-3 py-3 text-sm leading-6 outline-none focus:border-[var(--accent)] focus:bg-white"
+                  onChange={(event) =>
+                    updateDraft("provided_solution", event.target.value)
+                  }
+                  placeholder="정답이 왜 그렇게 나오는지 풀이 과정을 적습니다."
+                  value={draft.provided_solution}
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-semibold sm:col-span-2">
                 교사 메모
                 <textarea
                   className="min-h-24 resize-none rounded-lg border border-[var(--line)] bg-[var(--app-bg)] px-3 py-3 text-sm leading-6 outline-none focus:border-[var(--accent)] focus:bg-white"

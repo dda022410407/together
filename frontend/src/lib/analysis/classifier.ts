@@ -231,7 +231,21 @@ function buildProblemSolution(
 ) {
   const problemStatement = draft.problem_statement.trim();
   const targetAnswer = draft.correct_answer.trim();
+  const providedSolution = draft.provided_solution.trim();
   const wrongAnswer = draft.wrong_answer.trim();
+
+  if (providedSolution) {
+    return [
+      problemStatement ? `문제: ${problemStatement}` : "",
+      targetAnswer ? `정답: ${targetAnswer}` : "",
+      `풀이:\n${providedSolution}`,
+      wrongAnswer
+        ? `내 풀이와 비교: 내가 쓴 답/풀이 "${wrongAnswer}"와 위 옳은 풀이가 처음 달라지는 지점을 확인합니다.`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+  }
 
   if (!solvedProblem) {
     return [
@@ -264,6 +278,7 @@ export function classifyWrongAnswer(draft: AnalysisDraft) {
     draft.problem_statement,
     draft.wrong_answer,
     draft.correct_answer,
+    draft.provided_solution,
     draft.explanation,
   ]
     .join(" ")
@@ -280,14 +295,33 @@ export function classifyWrongAnswer(draft: AnalysisDraft) {
   const confidence = Math.min(94, 62 + filledFields * 5);
   const targetAnswer = draft.correct_answer.trim();
   const problemStatement = draft.problem_statement.trim();
+  const providedSolution = draft.provided_solution.trim();
   const solvedProblem =
     buildFractionDivisionSolution(problemStatement) ??
     buildLinearEquationSolution(problemStatement);
   const correctSolution = buildProblemSolution(draft, solvedProblem);
-  const mistakeReason = solvedProblem
-    ? draft.explanation.trim() || matchedRule.mistakeReason
-    : "이 문항은 아직 정확 풀이를 자동 생성할 수 없어 오답 원인을 단정하지 않습니다.";
-  const detailedExplanation = solvedProblem
+  const solutionSteps = providedSolution
+    ? providedSolution
+        .split(/\n+/)
+        .map((step) => step.trim())
+        .filter(Boolean)
+    : (solvedProblem?.steps ?? []);
+  const mistakeReason = providedSolution
+    ? draft.explanation.trim() ||
+      "입력한 옳은 풀이와 내가 쓴 풀이가 처음 달라지는 지점을 확인해야 합니다."
+    : solvedProblem
+      ? draft.explanation.trim() || matchedRule.mistakeReason
+      : "이 문항은 아직 정확 풀이를 자동 생성할 수 없어 오답 원인을 단정하지 않습니다.";
+  const detailedExplanation = providedSolution
+    ? [
+        "사용자가 입력한 옳은 풀이를 기준으로 문제 풀이를 표시합니다.",
+        draft.wrong_answer.trim()
+          ? "오답 분석은 내가 쓴 풀이와 옳은 풀이의 첫 차이를 찾는 방식으로 진행합니다."
+          : "",
+      ]
+        .filter(Boolean)
+        .join("\n")
+    : solvedProblem
     ? [
         `정답이 ${targetAnswer || solvedProblem.answer}인 이유는 위 풀이처럼 문제식을 변형했을 때 최종값이 ${solvedProblem.answer}로 정리되기 때문입니다.`,
         draft.wrong_answer.trim()
@@ -299,16 +333,24 @@ export function classifyWrongAnswer(draft: AnalysisDraft) {
     : "";
 
   return {
-    confidence: solvedProblem ? confidence : Math.min(confidence, 58),
+    confidence: providedSolution || solvedProblem ? confidence : Math.min(confidence, 58),
     correct_solution: correctSolution,
     detailed_explanation: detailedExplanation,
     mistake_reason: mistakeReason,
-    pattern: solvedProblem ? matchedRule.pattern : "정확 풀이 미지원",
-    review_direction: solvedProblem
+    pattern: providedSolution || solvedProblem ? matchedRule.pattern : "정확 풀이 미지원",
+    review_direction: providedSolution
+      ? "입력한 옳은 풀이와 내 풀이를 줄 단위로 비교해 처음 달라진 부분을 복습합니다."
+      : solvedProblem
       ? `정답 풀이의 각 줄을 내 풀이와 비교해 처음 달라진 단계를 복습합니다.`
       : "정확 풀이 생성을 위해 AI 풀이 엔진 또는 정답 풀이 데이터 연결이 필요합니다.",
-    review_topics: solvedProblem ? solvedProblem.reviewTopics : ["풀이 엔진 연결 필요"],
-    solution_steps: solvedProblem?.steps ?? [],
-    solution_strategy: solvedProblem?.strategy ?? "",
+    review_topics: providedSolution
+      ? ["입력한 옳은 풀이", "오답 풀이 비교"]
+      : solvedProblem
+        ? solvedProblem.reviewTopics
+        : ["풀이 엔진 연결 필요"],
+    solution_steps: solutionSteps,
+    solution_strategy: providedSolution
+      ? "옳은 풀이의 순서를 기준으로 내가 쓴 풀이를 한 줄씩 대조합니다."
+      : (solvedProblem?.strategy ?? ""),
   };
 }

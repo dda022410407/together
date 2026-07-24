@@ -66,6 +66,7 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isGeneratingSolution, setIsGeneratingSolution] = useState(false);
   const [settings, setSettings] = useState<AnalysisSettings>(defaultSettings);
   const [schemaReady, setSchemaReady] = useState(false);
   const [syncMessage, setSyncMessage] = useState("동기화 중");
@@ -274,6 +275,74 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
 
     setImageFile(null);
     setImagePreviewUrl(null);
+  }
+
+  function readImageAsDataUrl(file: File) {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.addEventListener("load", () => {
+        if (typeof reader.result === "string") {
+          resolve(reader.result);
+        } else {
+          reject(new Error("이미지를 읽지 못했습니다."));
+        }
+      });
+      reader.addEventListener("error", () => reject(reader.error));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function generateSolutionFromImage() {
+    if (!imageFile) {
+      setSyncMessage("문제 이미지를 먼저 첨부해주세요.");
+      return;
+    }
+
+    if (!draft.correct_answer.trim()) {
+      setSyncMessage("정답을 먼저 입력해야 AI 풀이를 생성할 수 있습니다.");
+      return;
+    }
+
+    setIsGeneratingSolution(true);
+    setSyncMessage("AI가 문제 이미지를 읽고 풀이를 생성하는 중입니다.");
+
+    try {
+      const imageDataUrl = await readImageAsDataUrl(imageFile);
+      const response = await fetch("/api/solve-image", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          correctAnswer: draft.correct_answer,
+          imageDataUrl,
+          problemStatement: draft.problem_statement,
+          subject: draft.subject,
+          unit: draft.unit,
+          wrongAnswer: draft.wrong_answer,
+        }),
+      });
+      const data = (await response.json()) as {
+        error?: string;
+        solution?: string;
+      };
+
+      if (!response.ok || !data.solution) {
+        setSyncMessage(data.error ?? "AI 풀이 생성에 실패했습니다.");
+        return;
+      }
+
+      setDraft((currentDraft) => ({
+        ...currentDraft,
+        provided_solution: data.solution ?? "",
+      }));
+      setSyncMessage("AI 풀이를 문제의 옳은 풀이 칸에 반영했습니다.");
+    } catch {
+      setSyncMessage("AI 풀이 생성 중 오류가 발생했습니다.");
+    } finally {
+      setIsGeneratingSolution(false);
+    }
   }
 
   async function uploadImage(userId: string) {
@@ -640,13 +709,23 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
                 />
               </label>
               <label className="grid gap-2 text-sm font-semibold">
-                문제의 옳은 풀이
+                <span className="flex flex-wrap items-center justify-between gap-2">
+                  문제의 옳은 풀이
+                  <button
+                    className="rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-xs font-bold text-[var(--accent)] transition hover:bg-[var(--accent-soft)] disabled:cursor-not-allowed disabled:text-[var(--muted)]"
+                    disabled={isGeneratingSolution || !imageFile}
+                    onClick={generateSolutionFromImage}
+                    type="button"
+                  >
+                    {isGeneratingSolution ? "생성 중" : "AI 풀이 생성"}
+                  </button>
+                </span>
                 <textarea
                   className="min-h-24 resize-none rounded-lg border border-[var(--line)] bg-[var(--app-bg)] px-3 py-3 text-sm leading-6 outline-none focus:border-[var(--accent)] focus:bg-white"
                   onChange={(event) =>
                     updateDraft("provided_solution", event.target.value)
                   }
-                  placeholder="정답이 왜 그렇게 나오는지 풀이 과정을 적습니다."
+                  placeholder="문제 이미지를 첨부하고 정답을 입력한 뒤 AI 풀이 생성을 누르면 채워집니다."
                   value={draft.provided_solution}
                 />
               </label>
@@ -662,7 +741,7 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
                 <p className="text-sm text-[var(--muted)]">새 문제 저장 시 결과 패널이 갱신됩니다.</p>
                 <button
                   className="rounded-lg bg-[var(--accent)] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#0c7779]"
-                  disabled={isSaving}
+                  disabled={isSaving || isGeneratingSolution}
                   type="submit"
                 >
                   {isSaving ? "저장 중" : "분석하고 저장"}

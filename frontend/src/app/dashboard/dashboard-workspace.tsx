@@ -324,6 +324,7 @@ export function DashboardWorkspace({ userEmail }: DashboardWorkspaceProps) {
         }),
       });
       const data = (await response.json()) as {
+        detail?: string;
         error?: string;
         solution?: string;
       };

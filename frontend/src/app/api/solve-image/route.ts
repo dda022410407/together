@@ -10,6 +10,14 @@ type SolveImageRequest = {
   wrongAnswer?: string;
 };
 
+type OpenAiErrorResponse = {
+  error?: {
+    code?: string;
+    message?: string;
+    type?: string;
+  };
+};
+
 const openAiApiKey = process.env.OPENAI_API_KEY ?? "";
 const openAiVisionModel = process.env.OPENAI_VISION_MODEL ?? "gpt-5-mini";
 
@@ -28,6 +36,16 @@ function getOutputText(value: unknown) {
   }
 
   return "";
+}
+
+function getOpenAiErrorMessage(value: unknown) {
+  const error = (value as OpenAiErrorResponse | null)?.error;
+
+  if (!error) {
+    return "";
+  }
+
+  return [error.message, error.type, error.code].filter(Boolean).join(" / ");
 }
 
 export async function POST(request: Request) {
@@ -117,8 +135,17 @@ export async function POST(request: Request) {
   const result = (await response.json()) as unknown;
 
   if (!response.ok) {
+    const detailMessage = getOpenAiErrorMessage(result);
+    const rateLimitMessage =
+      response.status === 429
+        ? "OpenAI 사용량 한도, 결제 상태, 또는 요청 제한 때문에 풀이를 생성하지 못했습니다."
+        : "AI 풀이 생성에 실패했습니다.";
+
     return NextResponse.json(
-      { error: "AI 풀이 생성에 실패했습니다.", detail: result },
+      {
+        detail: detailMessage,
+        error: detailMessage ? `${rateLimitMessage} (${detailMessage})` : rateLimitMessage,
+      },
       { status: response.status },
     );
   }
